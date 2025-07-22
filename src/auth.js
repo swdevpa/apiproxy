@@ -37,7 +37,7 @@ export class AuthManager {
   // Verify project token
   async verifyProjectToken(token, projectId) {
     try {
-      const storedTokens = await this.env.PROJECTS_KV.get(`tokens:${projectId}`);
+      const storedTokens = await this.env.APIPROXY_PROJECTS_KV.get(`tokens:${projectId}`);
       if (!storedTokens) return false;
       
       const tokens = JSON.parse(storedTokens);

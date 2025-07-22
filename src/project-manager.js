@@ -19,21 +19,21 @@ export class ProjectManager {
       active: true
     };
 
-    await this.env.PROJECTS_KV.put(`project:${projectId}`, JSON.stringify(project));
+    await this.env.APIPROXY_PROJECTS_KV.put(`project:${projectId}`, JSON.stringify(project));
     
     // Initialize empty secrets for this project
-    await this.env.SECRETS_KV.put(`secrets:${projectId}`, JSON.stringify({}));
+    await this.env.APIPROXY_SECRETS_KV.put(`secrets:${projectId}`, JSON.stringify({}));
     
     return project;
   }
 
   // Get all projects
   async getAllProjects() {
-    const { keys } = await this.env.PROJECTS_KV.list({ prefix: 'project:' });
+    const { keys } = await this.env.APIPROXY_PROJECTS_KV.list({ prefix: 'project:' });
     const projects = [];
     
     for (const key of keys) {
-      const projectData = await this.env.PROJECTS_KV.get(key.name);
+      const projectData = await this.env.APIPROXY_PROJECTS_KV.get(key.name);
       if (projectData) {
         projects.push(JSON.parse(projectData));
       }
@@ -44,7 +44,7 @@ export class ProjectManager {
 
   // Get single project
   async getProject(projectId) {
-    const projectData = await this.env.PROJECTS_KV.get(`project:${projectId}`);
+    const projectData = await this.env.APIPROXY_PROJECTS_KV.get(`project:${projectId}`);
     return projectData ? JSON.parse(projectData) : null;
   }
 
@@ -59,22 +59,22 @@ export class ProjectManager {
       updated: new Date().toISOString()
     };
 
-    await this.env.PROJECTS_KV.put(`project:${projectId}`, JSON.stringify(updatedProject));
+    await this.env.APIPROXY_PROJECTS_KV.put(`project:${projectId}`, JSON.stringify(updatedProject));
     return updatedProject;
   }
 
   // Delete project
   async deleteProject(projectId) {
-    await this.env.PROJECTS_KV.delete(`project:${projectId}`);
-    await this.env.SECRETS_KV.delete(`secrets:${projectId}`);
-    await this.env.PROJECTS_KV.delete(`tokens:${projectId}`);
+    await this.env.APIPROXY_PROJECTS_KV.delete(`project:${projectId}`);
+    await this.env.APIPROXY_SECRETS_KV.delete(`secrets:${projectId}`);
+    await this.env.APIPROXY_PROJECTS_KV.delete(`tokens:${projectId}`);
     return true;
   }
 
   // Manage project secrets
   async setSecret(projectId, key, value) {
     const encryptedValue = await this.encryption.encrypt(value);
-    const secretsData = await this.env.SECRETS_KV.get(`secrets:${projectId}`);
+    const secretsData = await this.env.APIPROXY_SECRETS_KV.get(`secrets:${projectId}`);
     const secrets = secretsData ? JSON.parse(secretsData) : {};
     
     secrets[key] = {
@@ -82,13 +82,13 @@ export class ProjectManager {
       updated: new Date().toISOString()
     };
 
-    await this.env.SECRETS_KV.put(`secrets:${projectId}`, JSON.stringify(secrets));
+    await this.env.APIPROXY_SECRETS_KV.put(`secrets:${projectId}`, JSON.stringify(secrets));
     await this.updateProject(projectId, {}); // Update timestamp
     return true;
   }
 
   async getSecret(projectId, key) {
-    const secretsData = await this.env.SECRETS_KV.get(`secrets:${projectId}`);
+    const secretsData = await this.env.APIPROXY_SECRETS_KV.get(`secrets:${projectId}`);
     if (!secretsData) return null;
     
     const secrets = JSON.parse(secretsData);
@@ -98,7 +98,7 @@ export class ProjectManager {
   }
 
   async getAllSecrets(projectId) {
-    const secretsData = await this.env.SECRETS_KV.get(`secrets:${projectId}`);
+    const secretsData = await this.env.APIPROXY_SECRETS_KV.get(`secrets:${projectId}`);
     if (!secretsData) return {};
     
     const secrets = JSON.parse(secretsData);
@@ -115,13 +115,13 @@ export class ProjectManager {
   }
 
   async deleteSecret(projectId, key) {
-    const secretsData = await this.env.SECRETS_KV.get(`secrets:${projectId}`);
+    const secretsData = await this.env.APIPROXY_SECRETS_KV.get(`secrets:${projectId}`);
     if (!secretsData) return false;
     
     const secrets = JSON.parse(secretsData);
     delete secrets[key];
     
-    await this.env.SECRETS_KV.put(`secrets:${projectId}`, JSON.stringify(secrets));
+    await this.env.APIPROXY_SECRETS_KV.put(`secrets:${projectId}`, JSON.stringify(secrets));
     return true;
   }
 

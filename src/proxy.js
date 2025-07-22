@@ -94,19 +94,19 @@ export class ProxyManager {
 
     // Store in KV with TTL (30 days)
     const logKey = `log:${projectId}:${Date.now()}`;
-    await this.env.PROJECTS_KV.put(logKey, JSON.stringify(logEntry), { expirationTtl: 2592000 });
+    await this.env.APIPROXY_PROJECTS_KV.put(logKey, JSON.stringify(logEntry), { expirationTtl: 2592000 });
   }
 
   // Get request logs for a project
   async getProjectLogs(projectId, limit = 100) {
-    const { keys } = await this.env.PROJECTS_KV.list({ 
+    const { keys } = await this.env.APIPROXY_PROJECTS_KV.list({ 
       prefix: `log:${projectId}:`,
       limit 
     });
     
     const logs = [];
     for (const key of keys) {
-      const logData = await this.env.PROJECTS_KV.get(key.name);
+      const logData = await this.env.APIPROXY_PROJECTS_KV.get(key.name);
       if (logData) {
         logs.push(JSON.parse(logData));
       }

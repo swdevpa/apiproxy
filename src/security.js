@@ -28,7 +28,7 @@ export class SecurityManager {
     const now = Math.floor(Date.now() / 1000);
     const windowStart = now - (now % window);
     
-    const rateLimitData = await this.env.PROJECTS_KV.get(key);
+    const rateLimitData = await this.env.APIPROXY_PROJECTS_KV.get(key);
     const currentCount = rateLimitData ? JSON.parse(rateLimitData) : { count: 0, window: windowStart };
     
     // Reset if we're in a new window
@@ -43,7 +43,7 @@ export class SecurityManager {
     
     // Increment counter
     currentCount.count++;
-    await this.env.PROJECTS_KV.put(key, JSON.stringify(currentCount), { expirationTtl: window });
+    await this.env.APIPROXY_PROJECTS_KV.put(key, JSON.stringify(currentCount), { expirationTtl: window });
     
     return true;
   }
@@ -123,6 +123,6 @@ export class SecurityManager {
     };
     
     const logKey = `security_log:${Date.now()}`;
-    await this.env.PROJECTS_KV.put(logKey, JSON.stringify(logEntry), { expirationTtl: 604800 }); // 7 days
+    await this.env.APIPROXY_PROJECTS_KV.put(logKey, JSON.stringify(logEntry), { expirationTtl: 604800 }); // 7 days
   }
 }

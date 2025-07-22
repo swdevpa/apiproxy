@@ -1,6 +1,7 @@
 import { getLoginHTML } from './templates/login.js';
 import { getDashboardHTML } from './templates/dashboard.js';
 import { getDashboardScript } from './templates/dashboard-script.js';
+import { getDocsHTML } from './templates/docs.js';
 import { ProjectsAPI } from './api/projects.js';
 import { SecretsAPI } from './api/secrets.js';
 import { ProxyAPI, LogsAPI } from './api/proxy.js';
@@ -51,6 +52,10 @@ export class Router {
       if (path === '/dashboard.js') {
         return this.securityManager.addSecurityHeaders(this.handleDashboardScript());
       }
+
+      if (path === '/docs' || path === '/documentation') {
+        return this.securityManager.addSecurityHeaders(this.handleDocs());
+      }
       
       if (path.startsWith('/api/projects')) {
         return this.securityManager.addSecurityHeaders(await this.projectsAPI.handle(request, url));
@@ -99,6 +104,12 @@ export class Router {
         'Content-Type': 'application/javascript',
         'Cache-Control': 'no-cache'
       }
+    });
+  }
+
+  handleDocs() {
+    return new Response(getDocsHTML(), { 
+      headers: { 'Content-Type': 'text/html' }
     });
   }
 }

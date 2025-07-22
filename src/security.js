@@ -1,3 +1,5 @@
+import { SECURITY_HEADERS, CONFIG } from './config.js';
+
 export class SecurityManager {
   constructor(env) {
     this.env = env;
@@ -8,12 +10,10 @@ export class SecurityManager {
   addSecurityHeaders(response) {
     const headers = new Headers(response.headers);
     
-    headers.set('X-Content-Type-Options', 'nosniff');
-    headers.set('X-Frame-Options', 'DENY');
-    headers.set('X-XSS-Protection', '1; mode=block');
-    headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
-    headers.set('Content-Security-Policy', "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'");
-    headers.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+    // Apply security headers from config
+    Object.entries(SECURITY_HEADERS).forEach(([key, value]) => {
+      headers.set(key, value);
+    });
     
     return new Response(response.body, {
       status: response.status,
@@ -91,17 +91,9 @@ export class SecurityManager {
   async checkSuspiciousActivity(request) {
     const url = new URL(request.url);
     const path = url.pathname.toLowerCase();
-    
-    // Check for common attack patterns
-    const suspiciousPatterns = [
-      '/wp-admin', '/.env', '/config', '/admin',
-      'sql', 'union', 'select', 'drop', 'insert',
-      '<script', 'javascript:', 'onload=', 'onerror='
-    ];
-    
     const requestString = `${path} ${url.search}`.toLowerCase();
     
-    for (const pattern of suspiciousPatterns) {
+    for (const pattern of CONFIG.SUSPICIOUS_PATTERNS) {
       if (requestString.includes(pattern)) {
         await this.logSuspiciousActivity(request, pattern);
         return true;

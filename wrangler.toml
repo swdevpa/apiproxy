@@ -11,9 +11,6 @@ id = "2f77fc2403414a889b6abd0363596a36"
 binding = "APIPROXY_SECRETS_KV"
 id = "8ae4fa74fcf64fdaabde8e7c94746942"
 
-[vars]
-ENVIRONMENT = "production"
-
 # Production environment (optional - same as default)
 [env.production]
 name = "api-proxy-manager"

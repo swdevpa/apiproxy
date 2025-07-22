@@ -40,7 +40,7 @@ export default {
 
       // Rate limiting for all endpoints
       const clientId = securityManager.getClientId(request);
-      if (!await securityManager.checkRateLimit(clientId, path)) {
+      if (!await securityManager.checkRateLimit(clientId, path, 200)) {
         return securityManager.addSecurityHeaders(
           new Response('Rate limit exceeded', { status: 429 })
         );
@@ -69,49 +69,87 @@ export default {
 };
 
 // Dashboard handler
-async function handleDashboard(request, env, authManager) {
-  // Simple admin check for dashboard access
-  const isAdmin = await authManager.verifyAdminToken(request);
+async function handleDashboard(request, env, authManager, projectManager) {
+  const url = new URL(request.url);
+  const path = url.pathname;
   
-  if (!isAdmin) {
-    return new Response(
-      `<!DOCTYPE html>
-      <html>
-      <head><title>API Proxy Manager - Login</title></head>
-      <body style="font-family: Arial, sans-serif; max-width: 400px; margin: 50px auto; padding: 20px;">
-        <h1>🔒 API Proxy Manager</h1>
-        <p>Enter your admin token to access the dashboard.</p>
-        <div id="login">
-          <input type="password" id="token" placeholder="Admin Token" style="width: 100%; padding: 10px; margin: 10px 0;">
-          <button onclick="login()" style="width: 100%; padding: 10px; background: #007cba; color: white; border: none; border-radius: 4px;">Login</button>
-        </div>
-        <script>
-          function login() {
-            const token = document.getElementById('token').value;
-            localStorage.setItem('adminToken', token);
-            location.reload();
+  // For /dashboard route, show dashboard with client-side auth check
+  if (path === '/dashboard') {
+    // Return dashboard - authentication will be handled client-side
+    return new Response(getDashboardHTML(), { 
+      headers: { 'Content-Type': 'text/html' }
+    });
+  }
+  
+  // For / route (root), always show login page - no auth check here
+  return new Response(
+    `<!DOCTYPE html>
+    <html>
+    <head><title>API Proxy Manager - Login</title></head>
+    <body style="font-family: Arial, sans-serif; max-width: 400px; margin: 50px auto; padding: 20px;">
+      <h1>🔒 API Proxy Manager</h1>
+      <p>Enter your admin token to access the dashboard.</p>
+      <div id="login">
+        <input type="password" id="token" placeholder="Admin Token" style="width: 100%; padding: 10px; margin: 10px 0;">
+        <button onclick="login()" style="width: 100%; padding: 10px; background: #007cba; color: white; border: none; border-radius: 4px;">Login</button>
+        <br><br>
+        <a href="/dashboard" style="color: #007cba;">Direct Dashboard Link (for testing)</a>
+      </div>
+      <script>
+        function login() {
+          const token = document.getElementById('token').value;
+          if (!token) {
+            alert('Please enter a token');
+            return;
           }
           
-          // Auto-login if token exists
-          const savedToken = localStorage.getItem('adminToken');
-          if (savedToken) {
-            fetch('/api/projects', {
-              headers: { 'Authorization': 'Bearer ' + savedToken }
-            }).then(r => r.ok ? location.reload() : null);
-          }
-        </script>
-      </body>
-      </html>`, 
-      { 
-        status: 401,
-        headers: { 'Content-Type': 'text/html' }
-      }
-    );
-  }
-
-  return new Response(getDashboardHTML(), { 
-    headers: { 'Content-Type': 'text/html' }
-  });
+          localStorage.setItem('adminToken', token);
+          
+          // Validate token first before redirecting
+          fetch('/api/projects', {
+            headers: { 'Authorization': 'Bearer ' + token }
+          }).then(r => {
+            console.log('API response status:', r.status);
+            if (r.ok) {
+              console.log('Login successful, redirecting...');
+              window.location.replace('/dashboard');
+            } else {
+              alert('Invalid token. Please try again.');
+              localStorage.removeItem('adminToken');
+            }
+          }).catch(err => {
+            alert('Login failed. Please try again.');
+            localStorage.removeItem('adminToken');
+            console.error('Login error:', err);
+          });
+        }
+        
+        // Check if we have a saved token and try auto-login ONCE
+        const savedToken = localStorage.getItem('adminToken');
+        if (savedToken && !sessionStorage.getItem('loginAttempted')) {
+          sessionStorage.setItem('loginAttempted', 'true');
+          fetch('/api/projects', {
+            headers: { 'Authorization': 'Bearer ' + savedToken }
+          }).then(r => {
+            if (r.ok) {
+              window.location.href = '/dashboard';
+            } else {
+              localStorage.removeItem('adminToken');
+              sessionStorage.removeItem('loginAttempted');
+            }
+          }).catch(err => {
+            localStorage.removeItem('adminToken');
+            sessionStorage.removeItem('loginAttempted');
+            console.error('Auto-login error:', err);
+          });
+        }
+      </script>
+    </body>
+    </html>`, 
+    { 
+      headers: { 'Content-Type': 'text/html' }
+    }
+  );
 }
 
 // API handler
@@ -307,6 +345,7 @@ function getDashboardHTML() {
       <div class="tabs">
         <div class="tab active" onclick="showTab('projects')">Projects</div>
         <div class="tab" onclick="showTab('new-project')">New Project</div>
+        <div class="tab" id="manage-tab" onclick="showTab('manage-project')" style="display: none;">Manage Project</div>
       </div>
 
       <div id="projects" class="tab-content active">
@@ -342,15 +381,62 @@ function getDashboardHTML() {
           </form>
         </div>
       </div>
+
+      <div id="manage-project" class="tab-content">
+        <div class="card">
+          <h2>Manage Project</h2>
+          <div id="project-details"></div>
+        </div>
+        
+        <div class="card">
+          <h2>API Secrets</h2>
+          <p>Add API keys and tokens. Use prefix <code>header_</code> for automatic header injection.</p>
+          
+          <div class="form-group">
+            <label>Secret Key</label>
+            <input type="text" id="secret-key" placeholder="header_x-api-key">
+          </div>
+          <div class="form-group">
+            <label>Secret Value</label>
+            <input type="password" id="secret-value" placeholder="your-api-key-here">
+          </div>
+          <button onclick="addSecret()" class="btn btn-success">Add Secret</button>
+          
+          <h3>Current Secrets</h3>
+          <div id="secrets-list">Loading...</div>
+        </div>
+      </div>
     </div>
 
     <script>
       const token = localStorage.getItem('adminToken');
       
+      // Check if user is authenticated
+      if (!token) {
+        window.location.href = '/';
+      }
+      
       function showTab(tabName) {
         document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
         document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
-        event.target.classList.add('active');
+        
+        // Show manage tab when needed
+        if (tabName === 'manage-project') {
+          document.getElementById('manage-tab').style.display = 'block';
+          document.getElementById('manage-tab').classList.add('active');
+        } else {
+          document.getElementById('manage-tab').style.display = 'none';
+          if (event && event.target) {
+            event.target.classList.add('active');
+          } else {
+            // Fallback for programmatic calls
+            const targetTab = Array.from(document.querySelectorAll('.tab')).find(t => 
+              t.textContent.toLowerCase().includes(tabName.replace('-', ' '))
+            );
+            if (targetTab) targetTab.classList.add('active');
+          }
+        }
+        
         document.getElementById(tabName).classList.add('active');
       }
 
@@ -422,8 +508,99 @@ function getDashboardHTML() {
       }
 
       function manageProject(id) {
-        // Implementation for project management modal would go here
-        alert('Project management interface - implement secrets management, view logs, etc.');
+        currentProjectId = id;
+        showTab('manage-project');
+        loadProjectDetails(id);
+        loadSecrets(id);
+      }
+      
+      let currentProjectId = null;
+      
+      async function loadProjectDetails(projectId) {
+        try {
+          const response = await fetch('/api/projects/' + projectId, {
+            headers: { 'Authorization': 'Bearer ' + token }
+          });
+          const project = await response.json();
+          document.getElementById('project-details').innerHTML = \`
+            <h3>\${project.name}</h3>
+            <p><strong>Type:</strong> \${project.type}</p>
+            <p><strong>Description:</strong> \${project.description || 'No description'}</p>
+            <p><strong>Created:</strong> \${new Date(project.created).toLocaleDateString()}</p>
+            <div class="proxy-url">
+              <strong>Proxy URL:</strong><br>
+              <code>\${window.location.origin}/proxy/\${project.id}?target_url=YOUR_API_URL</code>
+            </div>
+          \`;
+        } catch (error) {
+          console.error('Error loading project details:', error);
+        }
+      }
+      
+      async function loadSecrets(projectId) {
+        try {
+          const response = await fetch('/api/secrets/' + projectId, {
+            headers: { 'Authorization': 'Bearer ' + token }
+          });
+          const secrets = await response.json();
+          
+          const html = Object.entries(secrets).map(([key, data]) => \`
+            <div class="secret-item">
+              <div>
+                <strong>\${key}</strong><br>
+                <small>Updated: \${new Date(data.updated).toLocaleDateString()}</small>
+              </div>
+              <div>
+                <button class="btn btn-danger" onclick="deleteSecret('\${key}')">Delete</button>
+              </div>
+            </div>
+          \`).join('');
+          
+          document.getElementById('secrets-list').innerHTML = html || '<p>No secrets configured</p>';
+        } catch (error) {
+          console.error('Error loading secrets:', error);
+        }
+      }
+      
+      async function addSecret() {
+        const key = document.getElementById('secret-key').value;
+        const value = document.getElementById('secret-value').value;
+        
+        if (!key || !value) {
+          alert('Please enter both key and value');
+          return;
+        }
+        
+        try {
+          await fetch('/api/secrets/' + currentProjectId + '/' + key, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer ' + token
+            },
+            body: JSON.stringify({ value })
+          });
+          
+          document.getElementById('secret-key').value = '';
+          document.getElementById('secret-value').value = '';
+          loadSecrets(currentProjectId);
+        } catch (error) {
+          console.error('Error adding secret:', error);
+        }
+      }
+      
+      async function deleteSecret(key) {
+        if (confirm('Delete secret "' + key + '"?')) {
+          try {
+            await fetch('/api/secrets/' + currentProjectId + '/' + key, {
+              method: 'DELETE',
+              headers: { 'Authorization': 'Bearer ' + token }
+            });
+            loadSecrets(currentProjectId);
+          } catch (error) {
+            console.error('Error deleting secret:', error);
+          }
+        }
       }
 
       // Load projects on page load

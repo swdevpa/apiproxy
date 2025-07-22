@@ -10,8 +10,10 @@ export class AuthManager {
     const authHeader = request.headers.get('Authorization');
     if (!authHeader) return false;
     
-    const token = authHeader.replace('Bearer ', '');
-    return this.constantTimeCompare(token, this.ADMIN_TOKEN);
+    const token = authHeader.replace('Bearer ', '').trim();
+    if (!this.ADMIN_TOKEN) return false;
+    
+    return this.constantTimeCompare(token, this.ADMIN_TOKEN.trim());
   }
 
   // Constant time comparison to prevent timing attacks

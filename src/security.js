@@ -23,7 +23,7 @@ export class SecurityManager {
   }
 
   // Rate limiting implementation
-  async checkRateLimit(clientId, endpoint, limit = 100, window = 3600) {
+  async checkRateLimit(clientId, endpoint, limit = 1000, window = 3600) {
     const key = `rate_limit:${clientId}:${endpoint}`;
     const now = Math.floor(Date.now() / 1000);
     const windowStart = now - (now % window);

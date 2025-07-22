@@ -2,6 +2,19 @@ name = "api-proxy-manager"
 main = "src/index.js"
 compatibility_date = "2025-07-22"
 
+# KV Namespaces for default environment
+[[kv_namespaces]]
+binding = "APIPROXY_PROJECTS_KV"
+id = "2f77fc2403414a889b6abd0363596a36"
+
+[[kv_namespaces]]
+binding = "APIPROXY_SECRETS_KV"
+id = "8ae4fa74fcf64fdaabde8e7c94746942"
+
+[vars]
+ENVIRONMENT = "production"
+
+# Production environment (optional - same as default)
 [env.production]
 name = "api-proxy-manager"
 
@@ -13,5 +26,6 @@ id = "2f77fc2403414a889b6abd0363596a36"
 binding = "APIPROXY_SECRETS_KV"
 id = "8ae4fa74fcf64fdaabde8e7c94746942"
 
-[vars]
-ENVIRONMENT = "production"
+# Observability
+[observability.logs]
+enabled = true

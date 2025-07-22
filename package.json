@@ -1,0 +1,23 @@
+{
+  "name": "api-proxy-manager",
+  "version": "1.0.0",
+  "description": "Secure API proxy management system for multiple projects",
+  "main": "src/index.js",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "deploy:production": "wrangler deploy --env production"
+  },
+  "keywords": [
+    "cloudflare",
+    "workers",
+    "api",
+    "proxy",
+    "security"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "wrangler": "^4.25.1"
+  }
+}

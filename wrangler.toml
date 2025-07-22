@@ -1,0 +1,17 @@
+name = "api-proxy-manager"
+main = "src/index.js"
+compatibility_date = "2025-07-22"
+
+[env.production]
+name = "api-proxy-manager"
+
+[[env.production.kv_namespaces]]
+binding = "PROJECTS_KV"
+id = "your_kv_namespace_id_here"
+
+[[env.production.kv_namespaces]]
+binding = "SECRETS_KV"
+id = "your_secrets_kv_namespace_id_here"
+
+[vars]
+ENVIRONMENT = "production"

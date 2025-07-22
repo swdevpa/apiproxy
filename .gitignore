@@ -1,0 +1,116 @@
+# Cloudflare Workers
+# =================
+.wrangler/
+.dev.vars
+wrangler.toml.backup
+
+# Environment & Config
+# ===================
+.env
+.env.local
+.env.production
+.env.staging
+.env.development
+
+# Security & Secrets (NEVER commit these!)
+# ========================================
+*.key
+*.pem
+*.cert
+*.crt
+config/secrets.json
+secrets/
+.secrets
+admin-token.txt
+encryption-key.txt
+
+# Node.js & NPM
+# =============
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.npm
+.yarn-integrity
+package-lock.json
+yarn.lock
+
+# Logs
+# ====
+logs/
+*.log
+lerna-debug.log*
+
+# Runtime & Cache
+# ==============
+.cache/
+*.tsbuildinfo
+.eslintcache
+.parcel-cache/
+
+# Build & Distribution
+# ===================
+dist/
+build/
+*.tgz
+*.tar.gz
+
+# Development Tools
+# ================
+.vscode/settings.json
+.vscode/launch.json
+.idea/
+*.swp
+*.swo
+*~
+
+# OS Generated Files
+# =================
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# Testing & Coverage
+# =================
+coverage/
+.nyc_output/
+.coverage/
+*.lcov
+
+# Temporary Files
+# ==============
+tmp/
+temp/
+.tmp/
+
+# Backup Files
+# ===========
+*.backup
+*.bak
+*.orig
+
+# KV Namespace IDs (if stored in separate files)
+# =============================================
+kv-namespaces.json
+cloudflare-config.json
+
+# Local Development Override
+# =========================
+wrangler.dev.toml
+local-config.json
+
+# Documentation Builds
+# ===================
+docs/build/
+.docusaurus/
+
+# Personal Notes & TODOs
+# =====================
+NOTES.md
+TODO.md
+PERSONAL.md

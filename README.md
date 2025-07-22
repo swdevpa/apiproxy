@@ -30,7 +30,8 @@ A secure, centralized API proxy management system hosted on Cloudflare Workers w
 - Single Cloudflare Worker deployment
 - Intuitive web-based management interface
 - Complete REST API with OpenAPI-compatible endpoints
-- Detailed documentation and setup guides
+- Built-in documentation with syntax-highlighted code examples (`/docs`)
+- Detailed setup guides in German and English
 - Zero-downtime deployments
 
 ## Architecture Overview
@@ -99,7 +100,16 @@ A secure, centralized API proxy management system hosted on Cloudflare Workers w
    npm run deploy
    ```
 
-See [DEPLOYMENT.md](DEPLOYMENT.md) for detailed setup instructions and [USER-GUIDE.md](USER-GUIDE.md) / [BENUTZERHANDBUCH.md](BENUTZERHANDBUCH.md) for usage documentation.
+See [DEPLOYMENT.md](DEPLOYMENT.md) for detailed setup instructions and [BENUTZERHANDBUCH.md](BENUTZERHANDBUCH.md) for usage documentation.
+
+## 📖 Documentation
+
+Access comprehensive integration guides at `/docs` or `/documentation` after deployment:
+- **Live Documentation**: `https://your-worker.workers.dev/docs`
+- **API Integration Examples**: Complete code samples for Swift, JavaScript, Kotlin, React Native
+- **Common API Configurations**: OpenAI, Firebase, Google Gemini, and custom APIs
+- **Syntax Highlighting**: Beautiful, readable code examples with proper formatting
+- **Troubleshooting Guide**: Common issues and solutions
 
 ## API Usage Examples
 
@@ -186,7 +196,7 @@ class APIService {
 ```
 src/
 ├── index.js              # Main entry point (62 lines, clean!)
-├── router.js             # Request routing and middleware
+├── router.js             # Request routing with integrated docs handler
 ├── config.js             # Configuration constants and settings
 ├── api/                  # Modular API handlers
 │   ├── projects.js       # Project CRUD operations
@@ -195,13 +205,20 @@ src/
 ├── templates/            # HTML templates and client-side code
 │   ├── login.js          # Authentication interface
 │   ├── dashboard.js      # Management dashboard HTML
-│   └── dashboard-script.js # Client-side functionality
+│   ├── dashboard-script.js # Client-side functionality
+│   └── docs.js          # Public documentation template
 ├── auth.js              # Token authentication with timing attack protection
 ├── security.js         # Rate limiting, security headers, activity detection
 ├── encryption.js        # AES-GCM encryption for sensitive data
 ├── project-manager.js   # Project lifecycle management
 └── proxy.js            # HTTP proxy with header injection
 ```
+
+### Recent Improvements
+- **Enhanced Documentation**: Built-in `/docs` route with syntax-highlighted code examples
+- **Modular Templates**: Separated documentation into dedicated template module
+- **Improved Code Formatting**: Professional code presentation with language-specific styling
+- **Multiple Language Support**: Complete examples for Swift, JavaScript, Kotlin, React Native
 
 ## Security Architecture
 
@@ -249,6 +266,13 @@ DELETE /api/secrets/{project_id}/{key}     # Delete secret
 ```bash
 GET|POST /proxy/{project_id}?target_url=... # Proxy request with auto header injection
 GET      /api/logs/{project_id}             # Get request logs
+```
+
+### Documentation API
+
+```bash
+GET      /docs                              # Public API integration documentation
+GET      /documentation                     # Alternative docs endpoint
 ```
 
 ## Configuration

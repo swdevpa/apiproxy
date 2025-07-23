@@ -1,7 +1,13 @@
-// Dashboard JavaScript functionality
+// Dashboard JavaScript functionality - Modularized
 export function getDashboardScript() {
   return `
+import { Modal } from './modal-component.js';
+import { SecretManager } from './secret-manager.js';
+
 const token = localStorage.getItem('adminToken');
+let secretManager = null;
+let addSecretModal = null;
+let editSecretModal = null;
 
 // Check if user is authenticated
 if (!token) {
@@ -9,6 +15,20 @@ if (!token) {
 }
 
 let currentProjectId = null;
+
+// Initialize modular components
+function initializeModules() {
+  if (currentProjectId && token) {
+    secretManager = new SecretManager(token, currentProjectId);
+    
+    // Initialize modals
+    addSecretModal = new Modal('add-secret-modal', { title: 'Add New Secret' });
+    editSecretModal = new Modal('edit-secret-modal', { title: 'Edit Secret' });
+    
+    addSecretModal.createModal();
+    editSecretModal.createModal();
+  }
+}
 
 function showTab(tabName) {
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
@@ -107,6 +127,7 @@ function manageProject(id) {
   showTab('manage-project');
   loadProjectDetails(id);
   loadSecrets(id);
+  initializeModules();
 }
 
 async function loadProjectDetails(projectId) {
@@ -132,130 +153,142 @@ async function loadProjectDetails(projectId) {
 
 async function loadSecrets(projectId) {
   try {
-    const response = await fetch('/api/secrets/' + projectId, {
-      headers: { 'Authorization': 'Bearer ' + token }
-    });
-    const secrets = await response.json();
+    if (!secretManager) {
+      initializeModules();
+    }
     
-    const html = Object.entries(secrets).map(([key, data]) => \`
-      <div class="secret-item">
-        <div>
-          <strong>\${key}</strong><br>
-          <small>Updated: \${new Date(data.updated).toLocaleDateString()}</small>
-        </div>
-        <div class="secret-actions">
-          <button class="btn btn-primary" onclick="editSecret('\${key}')">Edit</button>
-          <button class="btn btn-danger" onclick="deleteSecret('\${key}')">Delete</button>
-        </div>
-      </div>
-    \`).join('');
-    
-    document.getElementById('secrets-list').innerHTML = html || '<p>No secrets configured</p>';
+    const secrets = await secretManager.getSecrets();
+    const html = SecretManager.renderSecretsList(secrets, 'openEditSecretModal', 'confirmDeleteSecret');
+    document.getElementById('secrets-list').innerHTML = html;
   } catch (error) {
     console.error('Error loading secrets:', error);
+    document.getElementById('secrets-list').innerHTML = '<p class="text-danger">Error loading secrets</p>';
   }
 }
 
-async function addSecret() {
-  const key = document.getElementById('secret-key').value;
-  const value = document.getElementById('secret-value').value;
-  const addBtn = document.getElementById('add-secret-btn');
+// Open add secret modal
+function openAddSecretModal() {
+  if (!addSecretModal) {
+    initializeModules();
+  }
+  
+  const content = SecretManager.getSecretFormHTML('', '', false);
+  const footer = \`
+    <button type="button" class="btn btn-secondary" onclick="addSecretModal.close()">Cancel</button>
+    <button type="button" class="btn btn-success" onclick="saveNewSecret()" id="save-new-secret-btn">Add Secret</button>
+  \`;
+  
+  addSecretModal.setContent(content).setFooter(footer).open();
+}
+
+// Save new secret
+async function saveNewSecret() {
+  const key = document.getElementById('secret-key-input').value.trim();
+  const value = document.getElementById('secret-value-input').value.trim();
+  const saveBtn = document.getElementById('save-new-secret-btn');
   
   if (!key || !value) {
     alert('Please enter both key and value');
     return;
   }
   
-  // Update button text to show what action is being performed
-  const isEditing = key && document.getElementById('secret-key').readOnly;
-  const originalText = addBtn.textContent;
-  addBtn.textContent = isEditing ? 'Updating...' : 'Adding...';
-  addBtn.disabled = true;
+  // Validate key format
+  const validation = SecretManager.validateSecretKey(key);
+  if (!validation.valid) {
+    alert(validation.message);
+    return;
+  }
+  
+  saveBtn.textContent = 'Adding...';
+  saveBtn.disabled = true;
   
   try {
-    await fetch('/api/secrets/' + currentProjectId + '/' + key, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer ' + token
-      },
-      body: JSON.stringify({ value })
-    });
-    
-    document.getElementById('secret-key').value = '';
-    document.getElementById('secret-value').value = '';
-    document.getElementById('secret-key').readOnly = false;
-    document.getElementById('secret-value').placeholder = 'your-api-key-here';
-    addBtn.textContent = 'Add Secret';
-    
-    // Remove cancel button if it exists
-    const cancelBtn = document.getElementById('cancel-edit-btn');
-    if (cancelBtn) {
-      cancelBtn.remove();
-    }
-    
+    await secretManager.saveSecret(key, value);
+    addSecretModal.close();
     loadSecrets(currentProjectId);
   } catch (error) {
     console.error('Error adding secret:', error);
-    addBtn.textContent = originalText;
+    alert('Error adding secret: ' + error.message);
   } finally {
-    addBtn.disabled = false;
+    saveBtn.textContent = 'Add Secret';
+    saveBtn.disabled = false;
   }
 }
 
-function editSecret(key) {
-  const keyInput = document.getElementById('secret-key');
-  const valueInput = document.getElementById('secret-value');
-  const addBtn = document.getElementById('add-secret-btn');
+let currentEditingSecretKey = null;
+
+// Open edit secret modal
+function openEditSecretModal(key) {
+  if (!editSecretModal) {
+    initializeModules();
+  }
   
-  keyInput.value = key;
-  keyInput.readOnly = true;
-  valueInput.value = '';
-  valueInput.placeholder = 'Enter new value for ' + key;
-  valueInput.focus();
+  currentEditingSecretKey = key;
   
-  addBtn.textContent = 'Update Secret';
+  const content = SecretManager.getSecretFormHTML(key, '', true);
+  const footer = \`
+    <button type="button" class="btn btn-secondary" onclick="editSecretModal.close()">Cancel</button>
+    <button type="button" class="btn btn-primary" onclick="saveEditedSecret()" id="save-edited-secret-btn">Save Changes</button>
+  \`;
   
-  // Add cancel option
-  if (!document.getElementById('cancel-edit-btn')) {
-    const cancelBtn = document.createElement('button');
-    cancelBtn.id = 'cancel-edit-btn';
-    cancelBtn.className = 'btn btn-secondary';
-    cancelBtn.textContent = 'Cancel';
-    cancelBtn.style.marginLeft = '10px';
-    cancelBtn.onclick = cancelEdit;
-    addBtn.parentNode.insertBefore(cancelBtn, addBtn.nextSibling);
+  editSecretModal.setContent(content).setFooter(footer).open();
+}
+
+// Save edited secret
+async function saveEditedSecret() {
+  const newKey = document.getElementById('secret-key-input').value.trim();
+  const newValue = document.getElementById('secret-value-input').value.trim();
+  const saveBtn = document.getElementById('save-edited-secret-btn');
+  
+  if (!newKey) {
+    alert('Please enter a secret key');
+    return;
+  }
+  
+  if (!newValue) {
+    alert('Please enter a secret value');
+    return;
+  }
+  
+  // Validate key format
+  const validation = SecretManager.validateSecretKey(newKey);
+  if (!validation.valid) {
+    alert(validation.message);
+    return;
+  }
+  
+  saveBtn.textContent = 'Saving...';
+  saveBtn.disabled = true;
+  
+  try {
+    await secretManager.updateSecretKey(currentEditingSecretKey, newKey, newValue);
+    editSecretModal.close();
+    loadSecrets(currentProjectId);
+    currentEditingSecretKey = null;
+  } catch (error) {
+    console.error('Error saving secret:', error);
+    alert('Error saving secret: ' + error.message);
+  } finally {
+    saveBtn.textContent = 'Save Changes';
+    saveBtn.disabled = false;
   }
 }
 
-function cancelEdit() {
-  const keyInput = document.getElementById('secret-key');
-  const valueInput = document.getElementById('secret-value');
-  const addBtn = document.getElementById('add-secret-btn');
-  const cancelBtn = document.getElementById('cancel-edit-btn');
-  
-  keyInput.value = '';
-  keyInput.readOnly = false;
-  valueInput.value = '';
-  valueInput.placeholder = 'your-api-key-here';
-  addBtn.textContent = 'Add Secret';
-  
-  if (cancelBtn) {
-    cancelBtn.remove();
+// Confirm and delete secret
+function confirmDeleteSecret(key) {
+  if (confirm(\`Are you sure you want to delete the secret "\${key}"?\`)) {
+    deleteSecret(key);
   }
 }
 
+// Delete secret
 async function deleteSecret(key) {
-  if (confirm('Delete secret "' + key + '"?')) {
-    try {
-      await fetch('/api/secrets/' + currentProjectId + '/' + key, {
-        method: 'DELETE',
-        headers: { 'Authorization': 'Bearer ' + token }
-      });
-      loadSecrets(currentProjectId);
-    } catch (error) {
-      console.error('Error deleting secret:', error);
-    }
+  try {
+    await secretManager.deleteSecret(key);
+    loadSecrets(currentProjectId);
+  } catch (error) {
+    console.error('Error deleting secret:', error);
+    alert('Error deleting secret: ' + error.message);
   }
 }
 

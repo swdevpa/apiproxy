@@ -156,6 +156,7 @@ export function getDashboardHTML() {
         font-size: 3rem;
         margin-bottom: var(--spacing-lg);
       }
+
     </style>
   </head>
   <body>
@@ -208,15 +209,7 @@ export function getDashboardHTML() {
           <h2>API Secrets</h2>
           <p>Add API keys and tokens. Use prefix <code>header_</code> for automatic header injection.</p>
           
-          <div class="form-group">
-            <label>Secret Key</label>
-            <input type="text" id="secret-key" placeholder="header_x-api-key">
-          </div>
-          <div class="form-group">
-            <label>Secret Value</label>
-            <input type="password" id="secret-value" placeholder="your-api-key-here">
-          </div>
-          <button onclick="addSecret()" class="btn btn-success" id="add-secret-btn">Add Secret</button>
+          <button onclick="openAddSecretModal()" class="btn btn-success">Add Secret</button>
           
           <h3>Current Secrets</h3>
           <div id="secrets-list">Loading...</div>
@@ -224,7 +217,8 @@ export function getDashboardHTML() {
       </div>
     </div>
 
-    <script src="/dashboard.js"></script>
+
+    <script type="module" src="/dashboard.js"></script>
   </body>
   </html>`;
 }

@@ -169,7 +169,7 @@ export class ApiConfigsHandler {
     }
 
     // Valid auth types
-    const validAuthTypes = ['header', 'query_param'];
+    const validAuthTypes = ['header', 'query_param', 'oauth'];
     if (!validAuthTypes.includes(config.authType)) {
       return false;
     }
@@ -184,6 +184,17 @@ export class ApiConfigsHandler {
     // Query param-specific validation
     if (config.authType === 'query_param') {
       if (!config.param) {
+        return false;
+      }
+    }
+
+    // OAuth-specific validation
+    if (config.authType === 'oauth') {
+      if (!config.oauthTokenUrl || !config.oauthClientIdSecret || !config.oauthClientSecretSecret) {
+        return false;
+      }
+      // Grant type is optional, defaults to 'client_credentials'
+      if (config.oauthGrantType && !['client_credentials', 'authorization_code'].includes(config.oauthGrantType)) {
         return false;
       }
     }

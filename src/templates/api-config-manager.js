@@ -196,8 +196,12 @@ export class ApiConfigManager {
           <div style="flex: 1;">
             <strong style="color: var(--primary-color);">${domain}</strong><br>
             <small style="color: var(--text-secondary);">
-              ${config.authType === 'header' ? `Header: ${config.header}` : `Query Param: ${config.param}`}
+              ${config.authType === 'header' ? `Header: ${config.header}` : 
+                config.authType === 'oauth' ? `OAuth 2.0: ${config.oauthTokenUrl}` : 
+                `Query Param: ${config.param}`}
               ${config.format ? ` (${config.format})` : ''}
+              ${config.authType === 'oauth' ? `<br>Grant: ${config.oauthGrantType || 'client_credentials'}` : ''}
+              ${config.authType === 'oauth' && config.oauthScope ? `<br>Scope: ${config.oauthScope}` : ''}
               <br>Secret: ${config.secretKey}
             </small>
           </div>

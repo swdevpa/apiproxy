@@ -647,12 +647,133 @@ function openEditApiConfigModal(domain) {
   apiConfigManager.getApiConfigs().then(configs => {
     const config = configs[domain] || {};
     const content = ApiConfigManager.getApiConfigFormHTML(domain, config, true);
+    
+    console.log('Edit Modal - Header format element present:', content.includes('id="header-format"'));
+    console.log('Edit Modal - OAuth option present:', content.includes('value="oauth"'));
+    console.log('Edit Modal - Config:', config);
+    
     const footer = \`
       <button type="button" class="btn btn-secondary" onclick="editApiConfigModal.close()">Cancel</button>
       <button type="button" class="btn btn-primary" id="save-api-config-btn" onclick="saveApiConfig()">Save Changes</button>
     \`;
     
-    editApiConfigModal.setContent(content).setFooter(footer).open();
+    // Check if template is missing OAuth support
+    const hasOAuth = content.includes('value="oauth"') && content.includes('id="oauth-config"');
+    const hasHeaderFormat = content.includes('id="header-format"');
+    
+    if (!hasOAuth || !hasHeaderFormat) {
+      console.error('Edit Modal - Template missing OAuth or header-format support, using fallback');
+      // Use complete fallback template with current config values
+      const fallbackContent = \`
+        <div class="form-group">
+          <label class="form-label">API Domain</label>
+          <input type="text" id="api-domain-input" class="form-input" 
+                 value="\${domain}" readonly required>
+          <small style="color: var(--text-secondary); font-size: 0.75rem;">
+            Enter the API domain (e.g., api.example.com)
+          </small>
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label">Authentication Type</label>
+          <select id="auth-type-select" class="form-input" required>
+            <option value="query_param" \${config.authType === 'query_param' ? 'selected' : ''}>Query Parameter</option>
+            <option value="header" \${config.authType === 'header' ? 'selected' : ''}>HTTP Header</option>
+            <option value="oauth" \${config.authType === 'oauth' ? 'selected' : ''}>OAuth 2.0</option>
+          </select>
+        </div>
+        
+        <div class="form-group" id="header-config" style="display: \${config.authType === 'header' ? 'block' : 'none'};">
+          <label class="form-label">Header Name</label>
+          <input type="text" id="header-input" class="form-input" 
+                 value="\${config.header || 'Authorization'}" placeholder="X-API-Key" required>
+          <small style="color: var(--text-secondary); font-size: 0.75rem;">
+            HTTP header name for the API key
+          </small>
+        </div>
+        
+        <div class="form-group" id="header-format" style="display: \${config.authType === 'header' ? 'block' : 'none'};">
+          <label class="form-label">Header Format (Optional)</label>
+          <input type="text" id="format-input" class="form-input" 
+                 value="\${config.format || 'Bearer {key}'}" placeholder="Bearer {key}">
+          <small style="color: var(--text-secondary); font-size: 0.75rem;">
+            Format template. Use {key} as placeholder (e.g., "Bearer {key}")
+          </small>
+        </div>
+        
+        <div class="form-group" id="param-config" style="display: \${config.authType === 'query_param' ? 'block' : 'none'};">
+          <label class="form-label">Parameter Name</label>
+          <input type="text" id="param-input" class="form-input" 
+                 value="\${config.param || ''}" placeholder="api_key" required>
+          <small style="color: var(--text-secondary); font-size: 0.75rem;">
+            Query parameter name for the API key
+          </small>
+        </div>
+        
+        <div class="form-group" id="oauth-config" style="display: \${config.authType === 'oauth' ? 'block' : 'none'};">
+          <h4 style="margin-bottom: var(--spacing-md); color: var(--text-primary);">OAuth 2.0 Configuration</h4>
+          
+          <div class="form-group">
+            <label class="form-label">Token URL</label>
+            <input type="text" id="oauth-token-url" class="form-input" 
+                   value="\${config.oauthTokenUrl || ''}" placeholder="https://oauth.fatsecret.com/connect/token" required>
+            <small style="color: var(--text-secondary); font-size: 0.75rem;">
+              OAuth token endpoint URL
+            </small>
+          </div>
+          
+          <div class="form-group">
+            <label class="form-label">Client ID Secret Name</label>
+            <input type="text" id="oauth-client-id-secret" class="form-input" 
+                   value="\${config.oauthClientIdSecret || ''}" placeholder="fatsecret_client_id" required>
+            <small style="color: var(--text-secondary); font-size: 0.75rem;">
+              Name of secret containing OAuth Client ID
+            </small>
+          </div>
+          
+          <div class="form-group">
+            <label class="form-label">Client Secret Secret Name</label>
+            <input type="text" id="oauth-client-secret-secret" class="form-input" 
+                   value="\${config.oauthClientSecretSecret || ''}" placeholder="fatsecret_client_secret" required>
+            <small style="color: var(--text-secondary); font-size: 0.75rem;">
+              Name of secret containing OAuth Client Secret
+            </small>
+          </div>
+          
+          <div class="form-group">
+            <label class="form-label">Grant Type</label>
+            <select id="oauth-grant-type" class="form-input" required>
+              <option value="client_credentials" \${(config.oauthGrantType || 'client_credentials') === 'client_credentials' ? 'selected' : ''}>Client Credentials</option>
+              <option value="authorization_code" \${config.oauthGrantType === 'authorization_code' ? 'selected' : ''}>Authorization Code</option>
+            </select>
+            <small style="color: var(--text-secondary); font-size: 0.75rem;">
+              OAuth 2.0 grant type
+            </small>
+          </div>
+          
+          <div class="form-group">
+            <label class="form-label">Scope (Optional)</label>
+            <input type="text" id="oauth-scope" class="form-input" 
+                   value="\${config.oauthScope || ''}" placeholder="basic read write">
+            <small style="color: var(--text-secondary); font-size: 0.75rem;">
+              OAuth scopes (space-separated)
+            </small>
+          </div>
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label">Secret Key Name</label>
+          <input type="text" id="secret-key-input" class="form-input" 
+                 value="\${config.secretKey || ''}" placeholder="fatsecret_access_token" required>
+          <small style="color: var(--text-secondary); font-size: 0.75rem;">
+            Name of the secret that contains the API key for this API
+          </small>
+        </div>
+      \`;
+      editApiConfigModal.setContent(fallbackContent).setFooter(footer).open();
+    } else {
+      editApiConfigModal.setContent(content).setFooter(footer).open();
+    }
     
     // Add auth type change handler
     setTimeout(() => {

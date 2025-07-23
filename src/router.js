@@ -1,6 +1,7 @@
 import { getLoginHTML } from './templates/login.js';
 import { getDashboardHTML } from './templates/dashboard.js';
 import { getDashboardScript } from './templates/dashboard-script.js';
+import { getDocsHTML } from './templates/docs.js';
 import { ProjectsAPI } from './api/projects.js';
 import { SecretsAPI } from './api/secrets.js';
 import { ProxyAPI, LogsAPI } from './api/proxy.js';

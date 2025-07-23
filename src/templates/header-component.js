@@ -40,7 +40,7 @@ export function getHeaderComponent(currentPage = 'dashboard', showAuth = true) {
   `;
 }
 
-export function getHeaderScript() {
+export function getHeaderScript(requireAuth = true) {
   return `
     <script>
       // Header authentication and navigation scripts - Global scope
@@ -73,7 +73,7 @@ export function getHeaderScript() {
       
       // Initialize on load
       document.addEventListener('DOMContentLoaded', function() {
-        checkAuthStatus();
+        ${requireAuth ? 'checkAuthStatus();' : '// No auth check for public pages'}
         
         // Add smooth transitions to all links
         document.querySelectorAll('a').forEach(link => {
@@ -86,11 +86,11 @@ export function getHeaderScript() {
       });
       
       // Page visibility change handler
-      document.addEventListener('visibilitychange', function() {
+      ${requireAuth ? `document.addEventListener('visibilitychange', function() {
         if (!document.hidden) {
           checkAuthStatus();
         }
-      });
+      });` : '// No visibility change handler for public pages'}
     </script>
   `;
 }

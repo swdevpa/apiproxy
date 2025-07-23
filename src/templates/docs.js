@@ -273,7 +273,7 @@ class GeminiAPIClient {
 
     suspend fun generateText(prompt: String): String = withContext(Dispatchers.IO) {
         val targetURL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent"
-        val fullURL = "$proxyURL?target_url=${URLEncoder.encode(targetURL, "UTF-8")}"
+        val fullURL = "\\$proxyURL?target_url=" + java.net.URLEncoder.encode(targetURL, "UTF-8")
         
         val requestBody = mapOf(
             "contents" to listOf(
@@ -433,7 +433,7 @@ curl -X POST "https://your-worker.workers.dev/proxy/YOUR_PROJECT_ID?target_url=h
         });
       });
     </script>
-    ${getHeaderScript()}
+    ${getHeaderScript(false)}
   </body>
   </html>`;
 }

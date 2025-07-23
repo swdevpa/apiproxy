@@ -16,6 +16,8 @@ A secure, centralized API proxy management system hosted on Cloudflare Workers w
 - Support for Web Apps, iOS/Android apps, Expo projects
 - **Multiple APIs per project** - USDA, OpenWeather, Stripe, GitHub, Google Maps and more
 - **Intelligent API detection** - automatic authentication method based on target URL
+- **Custom API configurations** - add any API without code changes via dashboard
+- **Built-in + Custom API support** - pre-configured popular APIs + user-defined configurations
 - **API-specific configurations** - query parameters, headers, Bearer tokens automatically handled
 - Complete project isolation with encrypted secret management
 - Real-time request logging and monitoring per project
@@ -159,18 +161,51 @@ const repos = await fetch(
 );
 ```
 
-### Supported API Configurations
+### Built-in API Configurations
 
 The system automatically detects and configures authentication for popular APIs:
 
-| API | Secret Key | Auth Method | Example |
+| API | Secret Key | Auth Method | Domain |
 |-----|------------|-------------|---------|
 | **USDA FoodData** | `usda_api_key` | Query param `api_key` | `api.nal.usda.gov` |
 | **OpenWeather** | `openweather_api_key` | Query param `appid` | `api.openweathermap.org` |
 | **Stripe** | `stripe_api_key` | Header `Authorization: Bearer` | `api.stripe.com` |
 | **GitHub** | `github_api_key` | Header `Authorization: token` | `api.github.com` |
 | **Google Maps** | `google_maps_api_key` | Query param `key` | `maps.googleapis.com` |
-| **Custom APIs** | `header_*` | Custom headers | Legacy support |
+| **Google Gemini** | `google_gemini_api_key` | Query param `key` | `generativelanguage.googleapis.com` |
+
+### Custom API Configuration (No Code Changes!)
+
+**Add any new API via dashboard or API endpoints:**
+
+```bash
+# Create custom API configuration
+POST /api/api-configs/{projectId}/{domain}
+{
+  "authType": "query_param",        # or "header"
+  "param": "api_key",              # for query_param type
+  "header": "X-API-Key",           # for header type  
+  "format": "Bearer {key}",        # optional header format
+  "secretKey": "my_api_key"        # secret key name
+}
+
+# Example: RapidAPI configuration
+POST /api/api-configs/my-project/api.rapidapi.com
+{
+  "authType": "header",
+  "header": "X-RapidAPI-Key", 
+  "secretKey": "rapidapi_key"
+}
+```
+
+**Then just add the secret and use:**
+1. Add secret: `rapidapi_key` = `your-rapidapi-key`
+2. Use in app: `proxy/my-project?target_url=https://api.rapidapi.com/endpoint`
+
+### Fallback System
+1. **Custom Config** (highest priority) - user-defined via dashboard
+2. **Built-in Config** - pre-configured popular APIs  
+3. **Legacy `header_*`** - backward compatibility
 
 ### iOS Swift Integration
 
@@ -300,6 +335,15 @@ GET    /api/secrets/{project_id}/{key}     # Get secret (decrypted)
 DELETE /api/secrets/{project_id}/{key}     # Delete secret
 ```
 
+### API Configurations API
+
+```bash
+GET    /api/api-configs/{project_id}           # List all custom API configs
+POST   /api/api-configs/{project_id}/{domain}  # Create/update API config
+GET    /api/api-configs/{project_id}/{domain}  # Get specific API config
+DELETE /api/api-configs/{project_id}/{domain}  # Delete API config
+```
+
 ### Proxy API
 
 ```bash
@@ -350,6 +394,7 @@ GET      /documentation                     # Alternative docs endpoint
 **You get:**
 - ✅ Single, secure proxy for unlimited projects
 - ✅ Centralized secret management with encryption
+- ✅ **Dynamic API configuration** - add any API without code changes
 - ✅ Zero-trust architecture (clients never see secrets)
 - ✅ Enterprise-grade security and monitoring
 - ✅ Modular, maintainable, testable codebase

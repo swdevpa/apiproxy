@@ -3,11 +3,15 @@ export function getDashboardScript() {
   return `
 import { Modal } from './modal-component.js';
 import { SecretManager } from './secret-manager.js';
+import { ApiConfigManager } from './api-config-manager.js';
 
 const token = localStorage.getItem('adminToken');
 let secretManager = null;
+let apiConfigManager = null;
 let addSecretModal = null;
 let editSecretModal = null;
+let addApiConfigModal = null;
+let editApiConfigModal = null;
 
 // Check if user is authenticated
 if (!token) {
@@ -20,13 +24,18 @@ let currentProjectId = null;
 function initializeModules() {
   if (currentProjectId && token) {
     secretManager = new SecretManager(token, currentProjectId);
+    apiConfigManager = new ApiConfigManager(token, currentProjectId);
     
     // Initialize modals
     addSecretModal = new Modal('add-secret-modal', { title: 'Add New Secret' });
     editSecretModal = new Modal('edit-secret-modal', { title: 'Edit Secret' });
+    addApiConfigModal = new Modal('add-api-config-modal', { title: 'Add API Configuration' });
+    editApiConfigModal = new Modal('edit-api-config-modal', { title: 'Edit API Configuration' });
     
     addSecretModal.createModal();
     editSecretModal.createModal();
+    addApiConfigModal.createModal();
+    editApiConfigModal.createModal();
   }
 }
 
@@ -138,6 +147,7 @@ function manageProject(id) {
   showTab('manage-project');
   loadProjectDetails(id);
   loadSecrets(id);
+  loadApiConfigs(id);
   initializeModules();
 }
 
@@ -302,6 +312,229 @@ async function deleteSecret(key) {
     alert('Error deleting secret: ' + error.message);
   }
 }
+
+// ===== API CONFIG MANAGEMENT =====
+
+// Load API configurations
+async function loadApiConfigs(projectId) {
+  if (!apiConfigManager) return;
+  
+  try {
+    const configs = await apiConfigManager.getApiConfigs();
+    const list = document.getElementById('api-configs-list');
+    if (list) {
+      list.innerHTML = ApiConfigManager.renderApiConfigsList(
+        configs,
+        'openEditApiConfigModal',
+        'confirmDeleteApiConfig'
+      );
+    }
+  } catch (error) {
+    console.error('Error loading API configs:', error);
+    const list = document.getElementById('api-configs-list');
+    if (list) {
+      list.innerHTML = '<p class="text-error">Error loading API configurations</p>';
+    }
+  }
+}
+
+// Open add API config modal
+function openAddApiConfigModal() {
+  if (!addApiConfigModal) {
+    initializeModules();
+  }
+  
+  const content = ApiConfigManager.getApiConfigFormHTML();
+  const footer = \`
+    <button type="button" class="btn btn-secondary" onclick="addApiConfigModal.close()">Cancel</button>
+    <button type="button" class="btn btn-primary" id="save-new-api-config-btn" onclick="saveNewApiConfig()">Add Configuration</button>
+  \`;
+  
+  addApiConfigModal.setContent(content).setFooter(footer).open();
+  
+  // Add auth type change handler
+  setTimeout(() => {
+    const authTypeSelect = document.getElementById('auth-type-select');
+    if (authTypeSelect) {
+      authTypeSelect.addEventListener('change', toggleApiConfigFields);
+    }
+  }, 100);
+}
+
+// Toggle form fields based on auth type
+function toggleApiConfigFields() {
+  const authType = document.getElementById('auth-type-select').value;
+  const headerConfig = document.getElementById('header-config');
+  const paramConfig = document.getElementById('param-config');
+  
+  if (authType === 'header') {
+    headerConfig.style.display = 'block';
+    paramConfig.style.display = 'none';
+  } else {
+    headerConfig.style.display = 'none';
+    paramConfig.style.display = 'block';
+  }
+}
+
+// Save new API config
+async function saveNewApiConfig() {
+  const domain = document.getElementById('api-domain-input').value.trim();
+  const authType = document.getElementById('auth-type-select').value;
+  const secretKey = document.getElementById('secret-key-input').value.trim();
+  const saveBtn = document.getElementById('save-new-api-config-btn');
+  
+  if (!domain || !secretKey) {
+    alert('Please enter domain and secret key');
+    return;
+  }
+  
+  const config = {
+    authType: authType,
+    secretKey: secretKey
+  };
+  
+  if (authType === 'header') {
+    const header = document.getElementById('header-input').value.trim();
+    const format = document.getElementById('format-input').value.trim();
+    if (!header) {
+      alert('Please enter header name');
+      return;
+    }
+    config.header = header;
+    if (format) config.format = format;
+  } else {
+    const param = document.getElementById('param-input').value.trim();
+    if (!param) {
+      alert('Please enter parameter name');
+      return;
+    }
+    config.param = param;
+  }
+  
+  saveBtn.textContent = 'Adding...';
+  saveBtn.disabled = true;
+  
+  try {
+    await apiConfigManager.saveApiConfig(domain, config);
+    addApiConfigModal.close();
+    loadApiConfigs(currentProjectId);
+  } catch (error) {
+    console.error('Error adding API config:', error);
+    alert('Error adding API configuration: ' + error.message);
+  } finally {
+    saveBtn.textContent = 'Add Configuration';
+    saveBtn.disabled = false;
+  }
+}
+
+let currentEditingApiConfigDomain = null;
+
+// Open edit API config modal
+function openEditApiConfigModal(domain) {
+  if (!editApiConfigModal) {
+    initializeModules();
+  }
+  
+  currentEditingApiConfigDomain = domain;
+  
+  // Get current config for editing
+  apiConfigManager.getApiConfigs().then(configs => {
+    const config = configs[domain] || {};
+    const content = ApiConfigManager.getApiConfigFormHTML(domain, config, true);
+    const footer = \`
+      <button type="button" class="btn btn-secondary" onclick="editApiConfigModal.close()">Cancel</button>
+      <button type="button" class="btn btn-primary" id="save-api-config-btn" onclick="saveApiConfig()">Save Changes</button>
+    \`;
+    
+    editApiConfigModal.setContent(content).setFooter(footer).open();
+    
+    // Add auth type change handler
+    setTimeout(() => {
+      const authTypeSelect = document.getElementById('auth-type-select');
+      if (authTypeSelect) {
+        authTypeSelect.addEventListener('change', toggleApiConfigFields);
+      }
+    }, 100);
+  });
+}
+
+// Save API config changes
+async function saveApiConfig() {
+  const domain = currentEditingApiConfigDomain;
+  const authType = document.getElementById('auth-type-select').value;
+  const secretKey = document.getElementById('secret-key-input').value.trim();
+  const saveBtn = document.getElementById('save-api-config-btn');
+  
+  if (!secretKey) {
+    alert('Please enter secret key');
+    return;
+  }
+  
+  const config = {
+    authType: authType,
+    secretKey: secretKey
+  };
+  
+  if (authType === 'header') {
+    const header = document.getElementById('header-input').value.trim();
+    const format = document.getElementById('format-input').value.trim();
+    if (!header) {
+      alert('Please enter header name');
+      return;
+    }
+    config.header = header;
+    if (format) config.format = format;
+  } else {
+    const param = document.getElementById('param-input').value.trim();
+    if (!param) {
+      alert('Please enter parameter name');
+      return;
+    }
+    config.param = param;
+  }
+  
+  saveBtn.textContent = 'Saving...';
+  saveBtn.disabled = true;
+  
+  try {
+    await apiConfigManager.saveApiConfig(domain, config);
+    editApiConfigModal.close();
+    loadApiConfigs(currentProjectId);
+    currentEditingApiConfigDomain = null;
+  } catch (error) {
+    console.error('Error saving API config:', error);
+    alert('Error saving API configuration: ' + error.message);
+  } finally {
+    saveBtn.textContent = 'Save Changes';
+    saveBtn.disabled = false;
+  }
+}
+
+// Confirm and delete API config
+function confirmDeleteApiConfig(domain) {
+  if (confirm(\`Are you sure you want to delete the API configuration for "\${domain}"?\`)) {
+    deleteApiConfig(domain);
+  }
+}
+
+// Delete API config
+async function deleteApiConfig(domain) {
+  try {
+    await apiConfigManager.deleteApiConfig(domain);
+    loadApiConfigs(currentProjectId);
+  } catch (error) {
+    console.error('Error deleting API config:', error);
+    alert('Error deleting API configuration: ' + error.message);
+  }
+}
+
+// Export functions to global scope for onclick handlers
+window.openAddApiConfigModal = openAddApiConfigModal;
+window.openEditApiConfigModal = openEditApiConfigModal;
+window.confirmDeleteApiConfig = confirmDeleteApiConfig;
+window.saveNewApiConfig = saveNewApiConfig;
+window.saveApiConfig = saveApiConfig;
+window.toggleApiConfigFields = toggleApiConfigFields;
 
 // Load projects on page load
 loadProjects();

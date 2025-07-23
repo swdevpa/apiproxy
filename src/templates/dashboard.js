@@ -207,12 +207,22 @@ export function getDashboardHTML() {
         
         <div class="card">
           <h2>API Secrets</h2>
-          <p>Add API keys and tokens. Use prefix <code>header_</code> for automatic header injection.</p>
+          <p>Add API keys and tokens. Built-in APIs are automatically configured.</p>
           
           <button onclick="openAddSecretModal()" class="btn btn-success">Add Secret</button>
           
           <h3>Current Secrets</h3>
           <div id="secrets-list">Loading...</div>
+        </div>
+
+        <div class="card">
+          <h2>Custom API Configurations</h2>
+          <p>Configure authentication for APIs not built into the system. No code changes required!</p>
+          
+          <button onclick="openAddApiConfigModal()" class="btn btn-primary">Add API Configuration</button>
+          
+          <h3>Current API Configurations</h3>
+          <div id="api-configs-list">Loading...</div>
         </div>
       </div>
     </div>

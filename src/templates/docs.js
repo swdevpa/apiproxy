@@ -140,11 +140,15 @@ export function getDocsHTML() {
         <h3>Step 1: Project Setup</h3>
         <p>Create a new project in the dashboard and note your Project ID.</p>
 
-        <h3>Step 2: Add API Secrets</h3>
+        <h3>Step 2: Configure API Authentication</h3>
         <div class="api-config">
-          <strong>🎯 Smart API Detection:</strong> The system automatically detects popular APIs and configures authentication. No <code>header_</code> prefix needed for supported APIs!
+          <strong>🎯 Three Ways to Configure APIs:</strong>
+          <br>1. <strong>Built-in APIs</strong> - Automatically detected (no config needed)
+          <br>2. <strong>Custom APIs</strong> - Configure via dashboard (no code changes)
+          <br>3. <strong>Legacy APIs</strong> - Use <code>header_*</code> prefix
         </div>
 
+        <h4>📋 Built-in API Support</h4>
         <table>
           <thead>
             <tr>
@@ -186,16 +190,45 @@ export function getDocsHTML() {
               <td><code>maps.googleapis.com</code></td>
             </tr>
             <tr>
-              <td><strong>Custom APIs</strong></td>
-              <td><code>header_*</code></td>
-              <td>Custom headers</td>
-              <td>Legacy support</td>
+              <td><strong>Google Gemini</strong></td>
+              <td><code>google_gemini_api_key</code></td>
+              <td>Query param <code>key</code></td>
+              <td><code>generativelanguage.googleapis.com</code></td>
             </tr>
           </tbody>
         </table>
 
+        <h4>🔧 Custom API Configuration</h4>
+        <div class="api-config">
+          <strong>✨ Add any API without code changes!</strong><br>
+          Configure new APIs directly in the dashboard or via API endpoints.
+        </div>
+
+        <div class="code-block">
+# Create custom API configuration
+POST /api/api-configs/{projectId}/{domain}
+{
+  "authType": "query_param",        // or "header"
+  "param": "api_key",              // for query_param type
+  "header": "X-API-Key",           // for header type  
+  "format": "Bearer {key}",        // optional header format
+  "secretKey": "my_api_key"        // secret key name
+}
+
+# Example: RapidAPI
+POST /api/api-configs/my-project/api.rapidapi.com
+{
+  "authType": "header",
+  "header": "X-RapidAPI-Key", 
+  "secretKey": "rapidapi_key"
+}
+        </div>
+
         <div class="warning">
-          <strong>💡 Multiple APIs per Project:</strong> Add multiple secret keys to use different APIs from the same proxy endpoint!
+          <strong>🚀 Three-Step Process for New APIs:</strong><br>
+          1. <strong>Configure API</strong> - Set auth method via dashboard<br>
+          2. <strong>Add Secret</strong> - Store your API key securely<br>
+          3. <strong>Use in App</strong> - Proxy automatically handles authentication
         </div>
       </div>
 
@@ -436,32 +469,46 @@ const handleAIGenerate = async () => {
       </div>
 
       <div class="card">
-        <h2>🔧 Common API Configurations</h2>
+        <h2>🔧 API Configuration Examples</h2>
 
-        <h3>🧠 OpenAI ChatGPT</h3>
+        <h3>🤖 Custom API Examples</h3>
+        
+        <h4>📱 RapidAPI Integration</h4>
         <div class="api-config">
-          Secret Key: <code class="highlight">header_authorization</code><br>
-          Secret Value: <code class="highlight">Bearer sk-proj-your-openai-key...</code>
+          <strong>API Configuration:</strong><br>
+          Domain: <code class="highlight">api.rapidapi.com</code><br>
+          Auth Type: <code class="highlight">header</code><br>
+          Header: <code class="highlight">X-RapidAPI-Key</code><br>
+          Secret Key: <code class="highlight">rapidapi_key</code>
         </div>
 
-        <h3>🔥 Firebase REST API</h3>
+        <h4>🏢 NewsAPI Integration</h4>
         <div class="api-config">
-          Secret Key: <code class="highlight">header_authorization</code><br>
-          Secret Value: <code class="highlight">Bearer your-firebase-id-token</code>
+          <strong>API Configuration:</strong><br>
+          Domain: <code class="highlight">newsapi.org</code><br>
+          Auth Type: <code class="highlight">query_param</code><br>
+          Parameter: <code class="highlight">apiKey</code><br>
+          Secret Key: <code class="highlight">news_api_key</code>
         </div>
 
-        <h3>🌐 Custom APIs</h3>
+        <h4>💰 Alpha Vantage (Finance API)</h4>
         <div class="api-config">
-          Secret Key: <code class="highlight">header_x-api-key</code><br>
-          Secret Value: <code class="highlight">your-custom-api-key</code>
+          <strong>API Configuration:</strong><br>
+          Domain: <code class="highlight">www.alphavantage.co</code><br>
+          Auth Type: <code class="highlight">query_param</code><br>
+          Parameter: <code class="highlight">apikey</code><br>
+          Secret Key: <code class="highlight">alphavantage_key</code>
         </div>
 
-        <h3>📊 Multiple Headers</h3>
+        <h3>📊 Legacy Header Configuration</h3>
+        <div class="warning">
+          <strong>⚠️ Legacy Method:</strong> Still supported for backward compatibility
+        </div>
         <div class="api-config">
-          For APIs requiring multiple authentication headers:<br>
-          <code class="highlight">header_x-api-key</code> → <code>main-api-key</code><br>
-          <code class="highlight">header_x-client-id</code> → <code>client-id</code><br>
-          <code class="highlight">header_authorization</code> → <code>Bearer token</code>
+          For APIs not yet configured:<br>
+          <code class="highlight">header_x-api-key</code> → <code>your-api-key</code><br>
+          <code class="highlight">header_authorization</code> → <code>Bearer your-token</code><br>
+          <code class="highlight">header_x-client-id</code> → <code>your-client-id</code>
         </div>
       </div>
 
@@ -470,9 +517,18 @@ const handleAIGenerate = async () => {
 
         <div class="warning">
           <strong>❌ "API Key Invalid" Errors:</strong><br>
-          • Verify secret name starts with <code>header_</code><br>
-          • Check API key is correct and active<br>
-          • Ensure proper header format for the API
+          • Check if API has built-in support (use correct secret key)<br>
+          • For custom APIs: verify configuration via <code>/api/api-configs</code><br>
+          • Legacy APIs: ensure secret name starts with <code>header_</code><br>
+          • Verify API key is correct and active
+        </div>
+
+        <div class="warning">
+          <strong>❌ Authentication Not Working:</strong><br>
+          • Built-in APIs: Use exact secret key names from table above<br>
+          • Custom APIs: Configure via dashboard or API endpoint first<br>
+          • Check domain matches exactly (e.g., <code>api.service.com</code>)<br>
+          • Verify auth type and parameters in configuration
         </div>
 
         <div class="warning">
@@ -482,11 +538,19 @@ const handleAIGenerate = async () => {
           • Proxy handles CORS automatically
         </div>
 
-        <h3>Testing with cURL</h3>
+        <h3>Testing APIs</h3>
         <div class="code-block">
-curl -X POST "https://your-worker.workers.dev/proxy/YOUR_PROJECT_ID?target_url=https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent" \\
+# Test USDA Food API
+curl -X POST "https://your-worker.workers.dev/proxy/YOUR_PROJECT_ID?target_url=https://api.nal.usda.gov/fdc/v1/foods/search" \\
   -H "Content-Type: application/json" \\
-  -d '{"contents":[{"parts":[{"text":"Hello Gemini!"}]}]}'
+  -d '{"query":"apple","pageSize":5}'
+
+# Test Custom API (after configuration)
+curl -X GET "https://your-worker.workers.dev/proxy/YOUR_PROJECT_ID?target_url=https://api.rapidapi.com/some-endpoint"
+
+# Check API configurations
+curl -H "Authorization: Bearer YOUR_TOKEN" \\
+  "https://your-worker.workers.dev/api/api-configs/YOUR_PROJECT_ID"
         </div>
       </div>
 
@@ -494,7 +558,8 @@ curl -X POST "https://your-worker.workers.dev/proxy/YOUR_PROJECT_ID?target_url=h
         <h2>🎯 Summary</h2>
         <ol>
           <li><strong>Create Project:</strong> Get your unique project ID</li>
-          <li><strong>Add Secrets:</strong> Use <code>header_</code> prefix for API keys</li>
+          <li><strong>Configure APIs:</strong> Built-in (automatic) or custom (via dashboard)</li>
+          <li><strong>Add Secrets:</strong> Store API keys securely using correct secret names</li>
           <li><strong>Implement:</strong> Use proxy URL in your app code</li>
           <li><strong>Monitor:</strong> Check logs and performance via dashboard</li>
         </ol>
@@ -502,6 +567,14 @@ curl -X POST "https://your-worker.workers.dev/proxy/YOUR_PROJECT_ID?target_url=h
         <div class="step">
           <strong>🔗 Proxy URL Format:</strong><br>
           <code>https://your-worker.workers.dev/proxy/PROJECT_ID?target_url=TARGET_API_URL</code>
+        </div>
+
+        <div class="api-config">
+          <strong>✨ Key Benefits:</strong><br>
+          • <strong>No Code Changes</strong> - Add any API via configuration<br>
+          • <strong>Secure</strong> - API keys never exposed to clients<br>
+          • <strong>Flexible</strong> - Built-in + custom + legacy support<br>
+          • <strong>Scalable</strong> - Multiple APIs per project
         </div>
       </div>
     </div>

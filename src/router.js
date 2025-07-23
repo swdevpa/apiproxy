@@ -5,6 +5,7 @@ import { getDocsHTML } from './templates/docs.js';
 import { ProjectsAPI } from './api/projects.js';
 import { SecretsAPI } from './api/secrets.js';
 import { ProxyAPI, LogsAPI } from './api/proxy.js';
+import { ApiConfigsHandler } from './api/api-configs.js';
 
 // Main router class
 export class Router {
@@ -20,6 +21,7 @@ export class Router {
     this.secretsAPI = new SecretsAPI(authManager, projectManager);
     this.proxyAPI = new ProxyAPI(proxyManager);
     this.logsAPI = new LogsAPI(authManager, proxyManager);
+    this.apiConfigsHandler = new ApiConfigsHandler(proxyManager, authManager);
   }
 
   async route(request) {
@@ -62,6 +64,10 @@ export class Router {
         return this.securityManager.addSecurityHeaders(await this.handleModuleFile('secret-manager.js'));
       }
 
+      if (path === '/api-config-manager.js') {
+        return this.securityManager.addSecurityHeaders(await this.handleModuleFile('api-config-manager.js'));
+      }
+
       if (path === '/docs' || path === '/documentation') {
         return this.securityManager.addSecurityHeaders(this.handleDocs());
       }
@@ -76,6 +82,10 @@ export class Router {
       
       if (path.startsWith('/api/logs')) {
         return this.securityManager.addSecurityHeaders(await this.logsAPI.handle(request, url));
+      }
+      
+      if (path.startsWith('/api/api-configs')) {
+        return this.securityManager.addSecurityHeaders(await this.apiConfigsHandler.handleRequest(request, path));
       }
       
       if (path.startsWith('/proxy/')) {
@@ -335,6 +345,130 @@ export class SecretManager {
         <div class="secret-actions">
           <button class="btn btn-primary btn-sm" onclick="\${onEdit}('\${key}')">Edit</button>
           <button class="btn btn-danger btn-sm" onclick="\${onDelete}('\${key}')">Delete</button>
+        </div>
+      </div>
+    \`).join('');
+  }
+}`;
+      } else if (filename === 'api-config-manager.js') {
+        // Direct content for api-config-manager.js
+        content = `// API Configuration Management Module
+export class ApiConfigManager {
+  constructor(token, projectId) {
+    this.token = token;
+    this.projectId = projectId;
+    this.apiBase = '/api/api-configs';
+  }
+
+  async getApiConfigs() {
+    try {
+      const response = await fetch(\`\${this.apiBase}/\${this.projectId}\`, {
+        headers: { 'Authorization': \`Bearer \${this.token}\` }
+      });
+      if (!response.ok) throw new Error(\`Failed to load API configs: \${response.status}\`);
+      return await response.json();
+    } catch (error) {
+      console.error('Error loading API configs:', error);
+      throw error;
+    }
+  }
+
+  async saveApiConfig(domain, config) {
+    if (!domain || !config) throw new Error('Domain and config are required');
+    try {
+      const response = await fetch(\`\${this.apiBase}/\${this.projectId}/\${domain}\`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': \`Bearer \${this.token}\`
+        },
+        body: JSON.stringify(config)
+      });
+      if (!response.ok) throw new Error(\`Failed to save API config: \${response.status}\`);
+      return await response.json();
+    } catch (error) {
+      console.error('Error saving API config:', error);
+      throw error;
+    }
+  }
+
+  async deleteApiConfig(domain) {
+    if (!domain) throw new Error('Domain is required');
+    try {
+      const response = await fetch(\`\${this.apiBase}/\${this.projectId}/\${domain}\`, {
+        method: 'DELETE',
+        headers: { 'Authorization': \`Bearer \${this.token}\` }
+      });
+      if (!response.ok) throw new Error(\`Failed to delete API config: \${response.status}\`);
+      return true;
+    } catch (error) {
+      console.error('Error deleting API config:', error);
+      throw error;
+    }
+  }
+
+  static getApiConfigFormHTML(domain = '', config = {}, isEdit = false) {
+    const domainPlaceholder = isEdit ? domain : 'api.example.com';
+    const authType = config.authType || 'query_param';
+    const secretKey = config.secretKey || '';
+    const header = config.header || 'X-API-Key';
+    const param = config.param || 'api_key';
+    const format = config.format || '';
+    
+    return \`
+      <div class="form-group">
+        <label class="form-label">API Domain</label>
+        <input type="text" id="api-domain-input" class="form-input" 
+               value="\${domain}" placeholder="\${domainPlaceholder}" \${isEdit ? 'readonly' : ''} required>
+      </div>
+      
+      <div class="form-group">
+        <label class="form-label">Authentication Type</label>
+        <select id="auth-type-select" class="form-input" required>
+          <option value="query_param" \${authType === 'query_param' ? 'selected' : ''}>Query Parameter</option>
+          <option value="header" \${authType === 'header' ? 'selected' : ''}>HTTP Header</option>
+        </select>
+      </div>
+      
+      <div class="form-group" id="header-config" style="display: \${authType === 'header' ? 'block' : 'none'};">
+        <label class="form-label">Header Name</label>
+        <input type="text" id="header-input" class="form-input" 
+               value="\${header}" placeholder="X-API-Key" required>
+      </div>
+      
+      <div class="form-group" id="param-config" style="display: \${authType === 'query_param' ? 'block' : 'none'};">
+        <label class="form-label">Parameter Name</label>
+        <input type="text" id="param-input" class="form-input" 
+               value="\${param}" placeholder="api_key" required>
+      </div>
+      
+      <div class="form-group">
+        <label class="form-label">Secret Key Name</label>
+        <input type="text" id="secret-key-input" class="form-input" 
+               value="\${secretKey}" placeholder="my_api_key" required>
+      </div>
+    \`;
+  }
+
+  static renderApiConfigsList(configs, onEdit, onDelete) {
+    if (!configs || Object.keys(configs).length === 0) {
+      return '<p class="text-secondary">No custom API configurations</p>';
+    }
+    
+    return Object.entries(configs).map(([domain, config]) => \`
+      <div class="api-config-item" style="border: 1px solid #ddd; border-radius: 8px; padding: 1rem; margin: 0.5rem 0;">
+        <div style="display: flex; justify-content: space-between; align-items: start;">
+          <div style="flex: 1;">
+            <strong>\${domain}</strong><br>
+            <small style="color: #666;">
+              \${config.authType === 'header' ? \`Header: \${config.header}\` : \`Query Param: \${config.param}\`}
+              <br>Secret: \${config.secretKey}
+            </small>
+          </div>
+          <div style="display: flex; gap: 0.5rem;">
+            <button class="btn btn-primary btn-sm" onclick="\${onEdit}('\${domain}')">Edit</button>
+            <button class="btn btn-danger btn-sm" onclick="\${onDelete}('\${domain}')">Delete</button>
+          </div>
         </div>
       </div>
     \`).join('');

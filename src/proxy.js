@@ -25,7 +25,7 @@ export class ProxyManager {
     }
     
     // Modify target URL to add query parameters if needed
-    targetUrl = this.modifyTargetUrl(targetUrl, secrets);
+    targetUrl = await this.modifyTargetUrl(targetUrl, secrets, projectId);
 
     try {
       // Create new request with modified headers
@@ -37,7 +37,7 @@ export class ProxyManager {
       proxyHeaders.delete('cf-ray');
       
       // Add API-specific authentication
-      await this.injectApiAuthentication(proxyHeaders, secrets, targetUrl);
+      await this.injectApiAuthentication(proxyHeaders, secrets, targetUrl, projectId);
 
       // Create proxy request
       const proxyRequest = new Request(targetUrl, {
@@ -96,12 +96,12 @@ export class ProxyManager {
   }
 
   // Inject API-specific authentication based on target URL
-  async injectApiAuthentication(headers, secrets, targetUrl) {
+  async injectApiAuthentication(headers, secrets, targetUrl, projectId) {
     const urlObj = new URL(targetUrl);
     const domain = urlObj.hostname;
     
-    // API-specific configurations
-    const apiConfigs = {
+    // Built-in API configurations
+    const builtInConfigs = {
       'api.nal.usda.gov': {
         authType: 'query_param',
         param: 'api_key',
@@ -136,8 +136,10 @@ export class ProxyManager {
       }
     };
     
-    // Check if we have a specific config for this API
-    const config = apiConfigs[domain];
+    // Check for custom API configurations first
+    const customConfig = await this.getCustomApiConfig(projectId, domain);
+    const config = customConfig || builtInConfigs[domain];
+    
     if (config && secrets[config.secretKey]) {
       const apiKey = secrets[config.secretKey].value;
       
@@ -160,12 +162,12 @@ export class ProxyManager {
   }
   
   // Modify target URL to add query parameters if needed
-  modifyTargetUrl(targetUrl, secrets) {
+  async modifyTargetUrl(targetUrl, secrets, projectId) {
     const urlObj = new URL(targetUrl);
     const domain = urlObj.hostname;
     
-    // API-specific configurations (same as above)
-    const apiConfigs = {
+    // Built-in API configurations (same as above)
+    const builtInConfigs = {
       'api.nal.usda.gov': {
         authType: 'query_param',
         param: 'api_key',
@@ -188,13 +190,63 @@ export class ProxyManager {
       }
     };
     
-    const config = apiConfigs[domain];
+    // Check for custom API configurations first
+    const customConfig = await this.getCustomApiConfig(projectId, domain);
+    const config = customConfig || builtInConfigs[domain];
+    
     if (config && config.authType === 'query_param' && secrets[config.secretKey]) {
       urlObj.searchParams.set(config.param, secrets[config.secretKey].value);
       return urlObj.toString();
     }
     
     return targetUrl;
+  }
+
+  // Get custom API configuration for a project and domain
+  async getCustomApiConfig(projectId, domain) {
+    try {
+      const configKey = `api_config:${projectId}:${domain}`;
+      const configData = await this.env.APIPROXY_PROJECTS_KV.get(configKey);
+      return configData ? JSON.parse(configData) : null;
+    } catch (error) {
+      console.error('Error loading custom API config:', error);
+      return null;
+    }
+  }
+
+  // Save custom API configuration
+  async saveCustomApiConfig(projectId, domain, config) {
+    try {
+      const configKey = `api_config:${projectId}:${domain}`;
+      await this.env.APIPROXY_PROJECTS_KV.put(configKey, JSON.stringify(config));
+      return true;
+    } catch (error) {
+      console.error('Error saving custom API config:', error);
+      return false;
+    }
+  }
+
+  // List all custom API configurations for a project
+  async getProjectApiConfigs(projectId) {
+    try {
+      const { keys } = await this.env.APIPROXY_PROJECTS_KV.list({ 
+        prefix: `api_config:${projectId}:` 
+      });
+      
+      const configs = {};
+      for (const key of keys) {
+        const configData = await this.env.APIPROXY_PROJECTS_KV.get(key.name);
+        if (configData) {
+          const domain = key.name.split(':')[2];
+          configs[domain] = JSON.parse(configData);
+        }
+      }
+      
+      return configs;
+    } catch (error) {
+      console.error('Error loading project API configs:', error);
+      return {};
+    }
   }
 
   // Get request logs for a project

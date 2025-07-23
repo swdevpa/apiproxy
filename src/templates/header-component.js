@@ -43,8 +43,8 @@ export function getHeaderComponent(currentPage = 'dashboard', showAuth = true) {
 export function getHeaderScript() {
   return `
     <script>
-      // Header authentication and navigation scripts
-      function logout() {
+      // Header authentication and navigation scripts - Global scope
+      window.logout = function() {
         if (confirm('Are you sure you want to logout?')) {
           localStorage.removeItem('adminToken');
           sessionStorage.clear();

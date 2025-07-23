@@ -106,7 +106,251 @@ export class Router {
     });
   }
 
+  async handleModuleFile(filename) {
+    try {
+      let content = '';
+      
+      if (filename === 'modal-component.js') {
+        content = `// Reusable Modal Component
+export class Modal {
+  constructor(id, options = {}) {
+    this.id = id;
+    this.options = {
+      title: options.title || 'Modal',
+      size: options.size || 'medium',
+      closeOnEscape: options.closeOnEscape !== false,
+      closeOnOverlayClick: options.closeOnOverlayClick !== false,
+      ...options
+    };
+    this.isOpen = false;
+    this.onClose = null;
+    this.onOpen = null;
+  }
+
+  createModal() {
+    const modalHTML = \\`
+      <div id="\\${this.id}" class="modal-overlay">
+        <div class="modal modal-\\${this.options.size}">
+          <div class="modal-header">
+            <h3 class="modal-title">\\${this.options.title}</h3>
+            <button class="modal-close" type="button">&times;</button>
+          </div>
+          <div class="modal-body"></div>
+          <div class="modal-footer"></div>
+        </div>
+      </div>
+    \\`;
+
+    if (!document.getElementById(this.id)) {
+      document.body.insertAdjacentHTML('beforeend', modalHTML);
+    }
+    this.bindEvents();
+    return this;
+  }
+
+  setContent(content) {
+    const modalBody = document.querySelector(\\`#\\${this.id} .modal-body\\`);
+    if (modalBody) modalBody.innerHTML = content;
+    return this;
+  }
+
+  setFooter(buttons) {
+    const modalFooter = document.querySelector(\\`#\\${this.id} .modal-footer\\`);
+    if (modalFooter) modalFooter.innerHTML = buttons;
+    return this;
+  }
+
+  open() {
+    const modal = document.getElementById(this.id);
+    if (modal) {
+      modal.classList.add('active');
+      this.isOpen = true;
+      setTimeout(() => {
+        const firstInput = modal.querySelector('input, textarea, select');
+        if (firstInput) firstInput.focus();
+      }, 100);
+      if (this.onOpen) this.onOpen();
+    }
+    return this;
+  }
+
+  close() {
+    const modal = document.getElementById(this.id);
+    if (modal) {
+      modal.classList.remove('active');
+      this.isOpen = false;
+      if (this.onClose) this.onClose();
+    }
+    return this;
+  }
+
+  bindEvents() {
+    const modal = document.getElementById(this.id);
+    if (!modal) return;
+
+    const closeButton = modal.querySelector('.modal-close');
+    if (closeButton) {
+      closeButton.addEventListener('click', () => this.close());
+    }
+
+    if (this.options.closeOnOverlayClick) {
+      modal.addEventListener('click', (e) => {
+        if (e.target === modal) this.close();
+      });
+    }
+
+    if (this.options.closeOnEscape) {
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && this.isOpen) this.close();
+      });
+    }
+  }
+
+  onOpenCallback(callback) { this.onOpen = callback; return this; }
+  onCloseCallback(callback) { this.onClose = callback; return this; }
+  
+  destroy() {
+    const modal = document.getElementById(this.id);
+    if (modal) modal.remove();
+  }
+}`;
+      } else if (filename === 'secret-manager.js') {
+        content = `// Secret Management Module
+export class SecretManager {
+  constructor(token, projectId) {
+    this.token = token;
+    this.projectId = projectId;
+    this.apiBase = '/api/secrets';
+  }
+
+  async getSecrets() {
+    try {
+      const response = await fetch(\\`\\${this.apiBase}/\\${this.projectId}\\`, {
+        headers: { 'Authorization': \\`Bearer \\${this.token}\\` }
+      });
+      if (!response.ok) throw new Error(\\`Failed to load secrets: \\${response.status}\\`);
+      return await response.json();
+    } catch (error) {
+      console.error('Error loading secrets:', error);
+      throw error;
+    }
+  }
+
+  async saveSecret(key, value) {
+    if (!key || !value) throw new Error('Both key and value are required');
+    try {
+      const response = await fetch(\\`\\${this.apiBase}/\\${this.projectId}/\\${key}\\`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': \\`Bearer \\${this.token}\\`
+        },
+        body: JSON.stringify({ value })
+      });
+      if (!response.ok) throw new Error(\\`Failed to save secret: \\${response.status}\\`);
+      return await response.json();
+    } catch (error) {
+      console.error('Error saving secret:', error);
+      throw error;
+    }
+  }
+
+  async deleteSecret(key) {
+    if (!key) throw new Error('Secret key is required');
+    try {
+      const response = await fetch(\\`\\${this.apiBase}/\\${this.projectId}/\\${key}\\`, {
+        method: 'DELETE',
+        headers: { 'Authorization': \\`Bearer \\${this.token}\\` }
+      });
+      if (!response.ok) throw new Error(\\`Failed to delete secret: \\${response.status}\\`);
+      return true;
+    } catch (error) {
+      console.error('Error deleting secret:', error);
+      throw error;
+    }
+  }
+
+  async updateSecretKey(oldKey, newKey, value) {
+    if (!oldKey || !newKey) throw new Error('Both old and new keys are required');
+    try {
+      if (oldKey !== newKey) await this.deleteSecret(oldKey);
+      return await this.saveSecret(newKey, value);
+    } catch (error) {
+      console.error('Error updating secret key:', error);
+      throw error;
+    }
+  }
+
+  static validateSecretKey(key) {
+    if (!key || typeof key !== 'string') return { valid: false, message: 'Secret key is required' };
+    if (key.length < 1) return { valid: false, message: 'Secret key cannot be empty' };
+    if (key.includes(' ')) return { valid: false, message: 'Secret key cannot contain spaces' };
+    return { valid: true };
+  }
+
+  static getSecretFormHTML(keyValue = '', valueValue = '', isEdit = false) {
+    const keyPlaceholder = isEdit ? keyValue : 'header_x-api-key';
+    const valuePlaceholder = isEdit ? 'Enter new value' : 'your-api-key-here';
+    
+    return \\`
+      <div class="form-group">
+        <label class="form-label">Secret Key</label>
+        <input type="text" id="secret-key-input" class="form-input" 
+               value="\\${keyValue}" placeholder="\\${keyPlaceholder}" required>
+        <small style="color: var(--text-secondary); font-size: 0.75rem;">
+          Use <code>header_</code> prefix for automatic header injection
+        </small>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Secret Value</label>
+        <input type="password" id="secret-value-input" class="form-input" 
+               value="\\${valueValue}" placeholder="\\${valuePlaceholder}" required>
+        <small style="color: var(--text-secondary); font-size: 0.75rem;">
+          This value will be encrypted and stored securely
+        </small>
+      </div>
+    \\`;
+  }
+
+  static renderSecretsList(secrets, onEdit, onDelete) {
+    if (!secrets || Object.keys(secrets).length === 0) {
+      return '<p class="text-secondary">No secrets configured</p>';
+    }
+    return Object.entries(secrets).map(([key, data]) => \\`
+      <div class="secret-item">
+        <div>
+          <strong>\\${key}</strong><br>
+          <small>Updated: \\${new Date(data.updated).toLocaleDateString()}</small>
+        </div>
+        <div class="secret-actions">
+          <button class="btn btn-primary btn-sm" onclick="\\${onEdit}('\\${key}')">Edit</button>
+          <button class="btn btn-danger btn-sm" onclick="\\${onDelete}('\\${key}')">Delete</button>
+        </div>
+      </div>
+    \\`).join('');
+  }
+}`;
+      }
+      
+      return new Response(content, {
+        headers: {
+          'Content-Type': 'application/javascript',
+          'Cache-Control': 'no-cache'
+        }
+      });
+    } catch (error) {
+      console.error('Error serving module file:', error);
+      return new Response('Module not found', { status: 404 });
+    }
+  }
+
   handleDocs() {
+    return new Response(getDocsHTML(), { 
+      headers: { 'Content-Type': 'text/html' }
+    });
+  }
+
+  handleDocsOld() {
     const docsHTML = `<!DOCTYPE html>
     <html lang="en">
     <head>

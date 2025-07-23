@@ -128,18 +128,18 @@ export class Modal {
   }
 
   createModal() {
-    const modalHTML = \\`
-      <div id="\\${this.id}" class="modal-overlay">
-        <div class="modal modal-\\${this.options.size}">
+    const modalHTML = \`
+      <div id="\${this.id}" class="modal-overlay">
+        <div class="modal modal-\${this.options.size}">
           <div class="modal-header">
-            <h3 class="modal-title">\\${this.options.title}</h3>
+            <h3 class="modal-title">\${this.options.title}</h3>
             <button class="modal-close" type="button">&times;</button>
           </div>
           <div class="modal-body"></div>
           <div class="modal-footer"></div>
         </div>
       </div>
-    \\`;
+    \`;
 
     if (!document.getElementById(this.id)) {
       document.body.insertAdjacentHTML('beforeend', modalHTML);
@@ -149,13 +149,13 @@ export class Modal {
   }
 
   setContent(content) {
-    const modalBody = document.querySelector(\\`#\\${this.id} .modal-body\\`);
+    const modalBody = document.querySelector(\`#\${this.id} .modal-body\`);
     if (modalBody) modalBody.innerHTML = content;
     return this;
   }
 
   setFooter(buttons) {
-    const modalFooter = document.querySelector(\\`#\\${this.id} .modal-footer\\`);
+    const modalFooter = document.querySelector(\`#\${this.id} .modal-footer\`);
     if (modalFooter) modalFooter.innerHTML = buttons;
     return this;
   }
@@ -225,10 +225,10 @@ export class SecretManager {
 
   async getSecrets() {
     try {
-      const response = await fetch(\\`\\${this.apiBase}/\\${this.projectId}\\`, {
-        headers: { 'Authorization': \\`Bearer \\${this.token}\\` }
+      const response = await fetch(\`\${this.apiBase}/\${this.projectId}\`, {
+        headers: { 'Authorization': \`Bearer \${this.token}\` }
       });
-      if (!response.ok) throw new Error(\\`Failed to load secrets: \\${response.status}\\`);
+      if (!response.ok) throw new Error(\`Failed to load secrets: \${response.status}\`);
       return await response.json();
     } catch (error) {
       console.error('Error loading secrets:', error);
@@ -239,15 +239,15 @@ export class SecretManager {
   async saveSecret(key, value) {
     if (!key || !value) throw new Error('Both key and value are required');
     try {
-      const response = await fetch(\\`\\${this.apiBase}/\\${this.projectId}/\\${key}\\`, {
+      const response = await fetch(\`\${this.apiBase}/\${this.projectId}/\${key}\`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': \\`Bearer \\${this.token}\\`
+          'Authorization': \`Bearer \${this.token}\`
         },
         body: JSON.stringify({ value })
       });
-      if (!response.ok) throw new Error(\\`Failed to save secret: \\${response.status}\\`);
+      if (!response.ok) throw new Error(\`Failed to save secret: \${response.status}\`);
       return await response.json();
     } catch (error) {
       console.error('Error saving secret:', error);
@@ -258,11 +258,11 @@ export class SecretManager {
   async deleteSecret(key) {
     if (!key) throw new Error('Secret key is required');
     try {
-      const response = await fetch(\\`\\${this.apiBase}/\\${this.projectId}/\\${key}\\`, {
+      const response = await fetch(\`\${this.apiBase}/\${this.projectId}/\${key}\`, {
         method: 'DELETE',
-        headers: { 'Authorization': \\`Bearer \\${this.token}\\` }
+        headers: { 'Authorization': \`Bearer \${this.token}\` }
       });
-      if (!response.ok) throw new Error(\\`Failed to delete secret: \\${response.status}\\`);
+      if (!response.ok) throw new Error(\`Failed to delete secret: \${response.status}\`);
       return true;
     } catch (error) {
       console.error('Error deleting secret:', error);
@@ -292,11 +292,11 @@ export class SecretManager {
     const keyPlaceholder = isEdit ? keyValue : 'header_x-api-key';
     const valuePlaceholder = isEdit ? 'Enter new value' : 'your-api-key-here';
     
-    return \\`
+    return \`
       <div class="form-group">
         <label class="form-label">Secret Key</label>
         <input type="text" id="secret-key-input" class="form-input" 
-               value="\\${keyValue}" placeholder="\\${keyPlaceholder}" required>
+               value="\${keyValue}" placeholder="\${keyPlaceholder}" required>
         <small style="color: var(--text-secondary); font-size: 0.75rem;">
           Use <code>header_</code> prefix for automatic header injection
         </small>
@@ -304,30 +304,30 @@ export class SecretManager {
       <div class="form-group">
         <label class="form-label">Secret Value</label>
         <input type="password" id="secret-value-input" class="form-input" 
-               value="\\${valueValue}" placeholder="\\${valuePlaceholder}" required>
+               value="\${valueValue}" placeholder="\${valuePlaceholder}" required>
         <small style="color: var(--text-secondary); font-size: 0.75rem;">
           This value will be encrypted and stored securely
         </small>
       </div>
-    \\`;
+    \`;
   }
 
   static renderSecretsList(secrets, onEdit, onDelete) {
     if (!secrets || Object.keys(secrets).length === 0) {
       return '<p class="text-secondary">No secrets configured</p>';
     }
-    return Object.entries(secrets).map(([key, data]) => \\`
+    return Object.entries(secrets).map(([key, data]) => \`
       <div class="secret-item">
         <div>
-          <strong>\\${key}</strong><br>
-          <small>Updated: \\${new Date(data.updated).toLocaleDateString()}</small>
+          <strong>\${key}</strong><br>
+          <small>Updated: \${new Date(data.updated).toLocaleDateString()}</small>
         </div>
         <div class="secret-actions">
-          <button class="btn btn-primary btn-sm" onclick="\\${onEdit}('\\${key}')">Edit</button>
-          <button class="btn btn-danger btn-sm" onclick="\\${onDelete}('\\${key}')">Delete</button>
+          <button class="btn btn-primary btn-sm" onclick="\${onEdit}('\${key}')">Edit</button>
+          <button class="btn btn-danger btn-sm" onclick="\${onDelete}('\${key}')">Delete</button>
         </div>
       </div>
-    \\`).join('');
+    \`).join('');
   }
 }`;
       }

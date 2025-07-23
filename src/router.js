@@ -85,7 +85,15 @@ export class Router {
       }
       
       if (path.startsWith('/api/api-configs')) {
-        return this.securityManager.addSecurityHeaders(await this.apiConfigsHandler.handleRequest(request, path));
+        console.log('Router - Handling API configs request:', path, request.method);
+        try {
+          const response = await this.apiConfigsHandler.handleRequest(request, path);
+          console.log('Router - API configs response status:', response.status);
+          return this.securityManager.addSecurityHeaders(response);
+        } catch (error) {
+          console.error('Router - Error in API configs handler:', error.message, error.stack);
+          throw error; // Re-throw to see the actual error
+        }
       }
       
       if (path.startsWith('/proxy/')) {
@@ -98,9 +106,20 @@ export class Router {
       );
       
     } catch (error) {
-      console.error('Router error:', error);
+      console.error('Router error:', error.message, error.stack);
+      console.error('Router error - Request details:', {
+        method: request.method,
+        url: request.url,
+        path: path
+      });
       return this.securityManager.addSecurityHeaders(
-        new Response('Internal Server Error', { status: 500 })
+        new Response(JSON.stringify({ 
+          error: 'Internal Server Error',
+          details: error.message 
+        }), { 
+          status: 500,
+          headers: { 'Content-Type': 'application/json' }
+        })
       );
     }
   }

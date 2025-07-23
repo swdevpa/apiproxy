@@ -217,11 +217,32 @@ export class ProxyManager {
   // Save custom API configuration
   async saveCustomApiConfig(projectId, domain, config) {
     try {
+      console.log('ProxyManager - Saving API config for project:', projectId, 'domain:', domain);
+      
+      // Check if KV namespace is available
+      if (!this.env.APIPROXY_PROJECTS_KV) {
+        console.error('KV namespace APIPROXY_PROJECTS_KV is not available');
+        return false;
+      }
+      
       const configKey = `api_config:${projectId}:${domain}`;
+      console.log('ProxyManager - Using config key:', configKey);
+      
       await this.env.APIPROXY_PROJECTS_KV.put(configKey, JSON.stringify(config));
+      console.log('ProxyManager - Successfully saved API config');
+      
       return true;
     } catch (error) {
-      console.error('Error saving custom API config:', error);
+      console.error('Error saving custom API config:', error.message, error.stack);
+      
+      // Handle specific error types
+      if (error.message?.includes('binding')) {
+        console.error('KV binding error - check wrangler.toml configuration');
+      }
+      if (error.message?.includes('authentication') || error.message?.includes('unauthorized')) {
+        console.error('Authentication error - check worker permissions');
+      }
+      
       return false;
     }
   }
@@ -230,6 +251,13 @@ export class ProxyManager {
   async getProjectApiConfigs(projectId) {
     try {
       console.log('Loading API configs for project:', projectId);
+      
+      // Check if KV namespace is available
+      if (!this.env.APIPROXY_PROJECTS_KV) {
+        console.error('KV namespace APIPROXY_PROJECTS_KV is not available');
+        return {};
+      }
+      
       const { keys } = await this.env.APIPROXY_PROJECTS_KV.list({ 
         prefix: `api_config:${projectId}:` 
       });
@@ -252,7 +280,16 @@ export class ProxyManager {
       console.log('Final configs:', configs);
       return configs;
     } catch (error) {
-      console.error('Error loading project API configs:', error);
+      console.error('Error loading project API configs:', error.message, error.stack);
+      
+      // Handle specific error types
+      if (error.message?.includes('binding')) {
+        console.error('KV binding error - check wrangler.toml configuration');
+      }
+      if (error.message?.includes('authentication') || error.message?.includes('unauthorized')) {
+        console.error('Authentication error - check worker permissions');
+      }
+      
       return {}; // Return empty object on error to prevent 500s
     }
   }

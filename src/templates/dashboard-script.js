@@ -1,6 +1,7 @@
 // Dashboard JavaScript functionality - Modularized
 export function getDashboardScript() {
   return `
+console.log('Dashboard script loaded - OAuth fix version 2025-07-24');
 import { Modal } from './modal-component.js';
 import { SecretManager } from './secret-manager.js';
 import { ApiConfigManager } from './api-config-manager.js';

@@ -1,4 +1,5 @@
 // API Configuration Management Module
+console.log('ApiConfigManager loaded - OAuth fix version 2025-07-24');
 export class ApiConfigManager {
   constructor(token, projectId) {
     this.token = token;
@@ -58,9 +59,9 @@ export class ApiConfigManager {
       return { valid: false, message: 'Auth type and secret key are required' };
     }
 
-    const validAuthTypes = ['header', 'query_param'];
+    const validAuthTypes = ['header', 'query_param', 'oauth'];
     if (!validAuthTypes.includes(config.authType)) {
-      return { valid: false, message: 'Auth type must be "header" or "query_param"' };
+      return { valid: false, message: 'Auth type must be "header", "query_param", or "oauth"' };
     }
 
     if (config.authType === 'header' && !config.header) {
@@ -69,6 +70,12 @@ export class ApiConfigManager {
 
     if (config.authType === 'query_param' && !config.param) {
       return { valid: false, message: 'Parameter name is required for query_param auth type' };
+    }
+
+    if (config.authType === 'oauth') {
+      if (!config.oauthTokenUrl || !config.oauthClientIdSecret || !config.oauthClientSecretSecret) {
+        return { valid: false, message: 'OAuth configuration requires token URL, client ID secret, and client secret secret' };
+      }
     }
 
     return { valid: true };
@@ -190,7 +197,13 @@ export class ApiConfigManager {
       return '<p class="text-secondary">No custom API configurations</p>';
     }
     
-    return Object.entries(configs).map(([domain, config]) => `
+    return Object.entries(configs).map(([domain, config]) => {
+      // Debug logging
+      console.log('Rendering API config for domain:', domain);
+      console.log('Config authType:', config.authType);
+      console.log('Full config:', config);
+      
+      return `
       <div class="api-config-item" style="border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: var(--spacing-md); margin: var(--spacing-sm) 0; background: var(--bg-card);">
         <div style="display: flex; justify-content: between; align-items: start;">
           <div style="flex: 1;">
@@ -211,6 +224,7 @@ export class ApiConfigManager {
           </div>
         </div>
       </div>
-    `).join('');
+    `;
+    }).join('');
   }
 }

@@ -372,6 +372,7 @@ export class SecretManager {
       } else if (filename === 'api-config-manager.js') {
         // Direct content for api-config-manager.js
         content = `// API Configuration Management Module
+console.log('ApiConfigManager loaded - OAuth fix version 2025-07-24');
 export class ApiConfigManager {
   constructor(token, projectId) {
     this.token = token;
@@ -426,46 +427,140 @@ export class ApiConfigManager {
     }
   }
 
+  static validateApiConfig(config) {
+    if (!config.authType || !config.secretKey) {
+      return { valid: false, message: 'Auth type and secret key are required' };
+    }
+
+    const validAuthTypes = ['header', 'query_param', 'oauth'];
+    if (!validAuthTypes.includes(config.authType)) {
+      return { valid: false, message: 'Auth type must be "header", "query_param", or "oauth"' };
+    }
+
+    if (config.authType === 'header' && !config.header) {
+      return { valid: false, message: 'Header name is required for header auth type' };
+    }
+
+    if (config.authType === 'query_param' && !config.param) {
+      return { valid: false, message: 'Parameter name is required for query_param auth type' };
+    }
+
+    if (config.authType === 'oauth') {
+      if (!config.oauthTokenUrl || !config.oauthClientIdSecret || !config.oauthClientSecretSecret) {
+        return { valid: false, message: 'OAuth configuration requires token URL, client ID secret, and client secret secret' };
+      }
+    }
+
+    return { valid: true };
+  }
+
   static getApiConfigFormHTML(domain = '', config = {}, isEdit = false) {
-    const domainPlaceholder = isEdit ? domain : 'api.example.com';
-    const authType = config.authType || 'query_param';
-    const secretKey = config.secretKey || '';
-    const header = config.header || 'X-API-Key';
-    const param = config.param || 'api_key';
-    const format = config.format || '';
-    
     return \`
       <div class="form-group">
         <label class="form-label">API Domain</label>
         <input type="text" id="api-domain-input" class="form-input" 
-               value="\${domain}" placeholder="\${domainPlaceholder}" \${isEdit ? 'readonly' : ''} required>
+               value="\${domain}" placeholder="api.example.com" \${isEdit ? 'readonly' : ''} required>
+        <small style="color: var(--text-secondary); font-size: 0.75rem;">
+          Enter the API domain (e.g., api.example.com)
+        </small>
       </div>
       
       <div class="form-group">
         <label class="form-label">Authentication Type</label>
         <select id="auth-type-select" class="form-input" required>
-          <option value="query_param" \${authType === 'query_param' ? 'selected' : ''}>Query Parameter</option>
-          <option value="header" \${authType === 'header' ? 'selected' : ''}>HTTP Header</option>
+          <option value="query_param">Query Parameter</option>
+          <option value="header">HTTP Header</option>
+          <option value="oauth">OAuth 2.0</option>
         </select>
       </div>
       
-      <div class="form-group" id="header-config" style="display: \${authType === 'header' ? 'block' : 'none'};">
+      <div class="form-group" id="header-config" style="display: none;">
         <label class="form-label">Header Name</label>
         <input type="text" id="header-input" class="form-input" 
-               value="\${header}" placeholder="X-API-Key" required>
+               value="\${config.header || 'Authorization'}" placeholder="X-API-Key" required>
+        <small style="color: var(--text-secondary); font-size: 0.75rem;">
+          HTTP header name for the API key
+        </small>
       </div>
       
-      <div class="form-group" id="param-config" style="display: \${authType === 'query_param' ? 'block' : 'none'};">
+      <div class="form-group" id="header-format" style="display: none;">
+        <label class="form-label">Header Format (Optional)</label>
+        <input type="text" id="format-input" class="form-input" 
+               value="\${config.format || 'Bearer {key}'}" placeholder="Bearer {key}">
+        <small style="color: var(--text-secondary); font-size: 0.75rem;">
+          Format template. Use {key} as placeholder (e.g., "Bearer {key}")
+        </small>
+      </div>
+      
+      <div class="form-group" id="param-config" style="display: block;">
         <label class="form-label">Parameter Name</label>
         <input type="text" id="param-input" class="form-input" 
-               value="\${param}" placeholder="api_key" required>
+               value="\${config.param || ''}" placeholder="api_key" required>
+        <small style="color: var(--text-secondary); font-size: 0.75rem;">
+          Query parameter name for the API key
+        </small>
+      </div>
+      
+      <div class="form-group" id="oauth-config" style="display: none;">
+        <h4 style="margin-bottom: var(--spacing-md); color: var(--text-primary);">OAuth 2.0 Configuration</h4>
+        
+        <div class="form-group">
+          <label class="form-label">Token URL</label>
+          <input type="text" id="oauth-token-url" class="form-input" 
+                 value="\${config.oauthTokenUrl || ''}" placeholder="https://oauth.example.com/token" required>
+          <small style="color: var(--text-secondary); font-size: 0.75rem;">
+            OAuth token endpoint URL
+          </small>
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label">Client ID Secret Name</label>
+          <input type="text" id="oauth-client-id-secret" class="form-input" 
+                 value="\${config.oauthClientIdSecret || ''}" placeholder="my_client_id" required>
+          <small style="color: var(--text-secondary); font-size: 0.75rem;">
+            Name of secret containing OAuth Client ID
+          </small>
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label">Client Secret Secret Name</label>
+          <input type="text" id="oauth-client-secret-secret" class="form-input" 
+                 value="\${config.oauthClientSecretSecret || ''}" placeholder="my_client_secret" required>
+          <small style="color: var(--text-secondary); font-size: 0.75rem;">
+            Name of secret containing OAuth Client Secret
+          </small>
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label">Grant Type</label>
+          <select id="oauth-grant-type" class="form-input" required>
+            <option value="client_credentials">Client Credentials</option>
+            <option value="authorization_code">Authorization Code</option>
+          </select>
+          <small style="color: var(--text-secondary); font-size: 0.75rem;">
+            OAuth 2.0 grant type
+          </small>
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label">Scope (Optional)</label>
+          <input type="text" id="oauth-scope" class="form-input" 
+                 value="\${config.oauthScope || ''}" placeholder="basic read write">
+          <small style="color: var(--text-secondary); font-size: 0.75rem;">
+            OAuth scopes (space-separated)
+          </small>
+        </div>
       </div>
       
       <div class="form-group">
         <label class="form-label">Secret Key Name</label>
         <input type="text" id="secret-key-input" class="form-input" 
-               value="\${secretKey}" placeholder="my_api_key" required>
+               value="\${config.secretKey || ''}" placeholder="my_api_key" required>
+        <small style="color: var(--text-secondary); font-size: 0.75rem;">
+          Name of the secret that contains the API key for this API
+        </small>
       </div>
+      
     \`;
   }
 
@@ -474,23 +569,35 @@ export class ApiConfigManager {
       return '<p class="text-secondary">No custom API configurations</p>';
     }
     
-    return Object.entries(configs).map(([domain, config]) => \`
-      <div class="api-config-item" style="border: 1px solid #ddd; border-radius: 8px; padding: 1rem; margin: 0.5rem 0;">
-        <div style="display: flex; justify-content: space-between; align-items: start;">
+    return Object.entries(configs).map(([domain, config]) => {
+      // Debug logging
+      console.log('Rendering API config for domain:', domain);
+      console.log('Config authType:', config.authType);
+      console.log('Full config:', config);
+      
+      return \`
+      <div class="api-config-item" style="border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: var(--spacing-md); margin: var(--spacing-sm) 0; background: var(--bg-card);">
+        <div style="display: flex; justify-content: between; align-items: start;">
           <div style="flex: 1;">
-            <strong>\${domain}</strong><br>
-            <small style="color: #666;">
-              \${config.authType === 'header' ? \`Header: \${config.header}\` : \`Query Param: \${config.param}\`}
+            <strong style="color: var(--primary-color);">\${domain}</strong><br>
+            <small style="color: var(--text-secondary);">
+              \${config.authType === 'header' ? \`Header: \${config.header}\` : 
+                config.authType === 'oauth' ? \`OAuth 2.0: \${config.oauthTokenUrl}\` : 
+                \`Query Param: \${config.param}\`}
+              \${config.format ? \` (\${config.format})\` : ''}
+              \${config.authType === 'oauth' ? \`<br>Grant: \${config.oauthGrantType || 'client_credentials'}\` : ''}
+              \${config.authType === 'oauth' && config.oauthScope ? \`<br>Scope: \${config.oauthScope}\` : ''}
               <br>Secret: \${config.secretKey}
             </small>
           </div>
-          <div style="display: flex; gap: 0.5rem;">
+          <div class="api-config-actions" style="display: flex; gap: var(--spacing-sm);">
             <button class="btn btn-primary btn-sm" onclick="\${onEdit}('\${domain}')">Edit</button>
             <button class="btn btn-danger btn-sm" onclick="\${onDelete}('\${domain}')">Delete</button>
           </div>
         </div>
       </div>
-    \`).join('');
+    \`;
+    }).join('');
   }
 }`;
       }

@@ -219,6 +219,7 @@ export function getDashboardHTML() {
 
 
     <script type="module" src="/dashboard.js"></script>
+    ${getHeaderScript()}
   </body>
   </html>`;
 }

@@ -141,8 +141,8 @@ export function getDocsHTML() {
         <p>Create a new project in the dashboard and note your Project ID.</p>
 
         <h3>Step 2: Add API Secrets</h3>
-        <div class="warning">
-          <strong>⚠️ Important:</strong> Always use the <code>header_</code> prefix for automatic header injection!
+        <div class="api-config">
+          <strong>🎯 Smart API Detection:</strong> The system automatically detects popular APIs and configures authentication. No <code>header_</code> prefix needed for supported APIs!
         </div>
 
         <table>
@@ -150,50 +150,80 @@ export function getDocsHTML() {
             <tr>
               <th>API Service</th>
               <th>Secret Key</th>
-              <th>Secret Value Format</th>
+              <th>Auth Method</th>
+              <th>Domain</th>
             </tr>
           </thead>
           <tbody>
             <tr>
-              <td><strong>Google Gemini</strong></td>
-              <td><code>header_x-goog-api-key</code></td>
-              <td><code>YOUR_GEMINI_API_KEY</code></td>
+              <td><strong>USDA FoodData</strong></td>
+              <td><code>usda_api_key</code></td>
+              <td>Query param <code>api_key</code></td>
+              <td><code>api.nal.usda.gov</code></td>
             </tr>
             <tr>
-              <td><strong>OpenAI</strong></td>
-              <td><code>header_authorization</code></td>
-              <td><code>Bearer sk-proj-your-key...</code></td>
+              <td><strong>OpenWeather</strong></td>
+              <td><code>openweather_api_key</code></td>
+              <td>Query param <code>appid</code></td>
+              <td><code>api.openweathermap.org</code></td>
             </tr>
             <tr>
-              <td><strong>Custom API Key</strong></td>
-              <td><code>header_x-api-key</code></td>
-              <td><code>your-custom-key</code></td>
+              <td><strong>Stripe</strong></td>
+              <td><code>stripe_api_key</code></td>
+              <td>Header <code>Authorization: Bearer</code></td>
+              <td><code>api.stripe.com</code></td>
             </tr>
             <tr>
-              <td><strong>Firebase</strong></td>
-              <td><code>header_authorization</code></td>
-              <td><code>Bearer your-id-token</code></td>
+              <td><strong>GitHub</strong></td>
+              <td><code>github_api_key</code></td>
+              <td>Header <code>Authorization: token</code></td>
+              <td><code>api.github.com</code></td>
+            </tr>
+            <tr>
+              <td><strong>Google Maps</strong></td>
+              <td><code>google_maps_api_key</code></td>
+              <td>Query param <code>key</code></td>
+              <td><code>maps.googleapis.com</code></td>
+            </tr>
+            <tr>
+              <td><strong>Custom APIs</strong></td>
+              <td><code>header_*</code></td>
+              <td>Custom headers</td>
+              <td>Legacy support</td>
             </tr>
           </tbody>
         </table>
+
+        <div class="warning">
+          <strong>💡 Multiple APIs per Project:</strong> Add multiple secret keys to use different APIs from the same proxy endpoint!
+        </div>
       </div>
 
       <div class="card">
-        <h2>🤖 Google Gemini Integration</h2>
+        <h2>🥗 Multi-API Integration Examples</h2>
         
         <div class="api-config">
+          <strong>🎯 One Project, Multiple APIs:</strong><br>
+          Project: <code class="highlight">my-food-app</code><br>
+          Secrets: <code class="highlight">usda_api_key, openweather_api_key, stripe_api_key</code>
+        </div>
+
+        <h3>🍎 USDA Food API Example</h3>
+        <div class="api-config">
           <strong>Dashboard Configuration:</strong><br>
-          Secret Key: <code class="highlight">header_x-goog-api-key</code><br>
-          Secret Value: <code class="highlight">YOUR_GEMINI_API_KEY</code>
+          Secret Key: <code class="highlight">usda_api_key</code><br>
+          Secret Value: <code class="highlight">YOUR_USDA_API_KEY</code><br>
+          <em>Automatically adds ?api_key=YOUR_USDA_API_KEY</em>
         </div>
 
         <h3>📱 iOS (Swift)</h3>
         <div class="code-block">
-class GeminiAPI {
-    private let proxyURL = "https://your-worker.workers.dev/proxy/YOUR_PROJECT_ID"
+class FoodAPIManager {
+    private let proxyURL = "https://your-worker.workers.dev/proxy/my-food-app"
     
-    func generateText(prompt: String) async throws -> String {
-        let targetURL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent"
+    // USDA Food API - automatic ?api_key injection
+    func searchFood(query: String) async throws -> [FoodItem] {
+        let targetURL = "https://api.nal.usda.gov/fdc/v1/foods/search"
         let fullURL = "\\(proxyURL)?target_url=\\(targetURL.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed)!)"
         
         var request = URLRequest(url: URL(string: fullURL)!)
@@ -201,65 +231,119 @@ class GeminiAPI {
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         
         let requestBody = [
-            "contents": [
-                ["parts": [["text": prompt]]]
-            ]
+            "query": query,
+            "dataType": ["Survey (FNDDS)", "SR Legacy", "Branded"],
+            "pageSize": 20
         ]
         request.httpBody = try JSONSerialization.data(withJSONObject: requestBody)
         
         let (data, _) = try await URLSession.shared.data(for: request)
-        let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
+        return try JSONDecoder().decode(USDAResponse.self, from: data).foods
+    }
+    
+    // OpenWeather API - automatic ?appid injection
+    func getWeather(for city: String) async throws -> WeatherData {
+        let targetURL = "https://api.openweathermap.org/data/2.5/weather?q=\\(city)"
+        let fullURL = "\\(proxyURL)?target_url=\\(targetURL.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed)!)"
         
-        // Parse Gemini response
-        if let candidates = json?["candidates"] as? [[String: Any]],
-           let content = candidates.first?["content"] as? [String: Any],
-           let parts = content["parts"] as? [[String: Any]],
-           let text = parts.first?["text"] as? String {
-            return text
-        }
+        let request = URLRequest(url: URL(string: fullURL)!)
+        let (data, _) = try await URLSession.shared.data(for: request)
+        return try JSONDecoder().decode(WeatherData.self, from: data)
+    }
+    
+    // Stripe API - automatic Authorization: Bearer injection
+    func createCustomer(email: String) async throws -> StripeCustomer {
+        let targetURL = "https://api.stripe.com/v1/customers"
+        let fullURL = "\\(proxyURL)?target_url=\\(targetURL.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed)!)"
         
-        throw APIError.invalidResponse
+        var request = URLRequest(url: URL(string: fullURL)!)
+        request.httpMethod = "POST"
+        request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
+        request.httpBody = "email=\\(email)".data(using: .utf8)
+        
+        let (data, _) = try await URLSession.shared.data(for: request)
+        return try JSONDecoder().decode(StripeCustomer.self, from: data)
     }
 }
         </div>
 
         <h3>🌐 JavaScript/React</h3>
         <div class="code-block">
-class GeminiAPI {
+class MultiAPIService {
   constructor(projectId) {
     this.proxyURL = \`https://your-worker.workers.dev/proxy/\${projectId}\`;
   }
 
-  async generateText(prompt) {
-    const targetURL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent';
+  // USDA Food API
+  async searchFood(query) {
+    const targetURL = 'https://api.nal.usda.gov/fdc/v1/foods/search';
     
     const response = await fetch(\`\${this.proxyURL}?target_url=\${encodeURIComponent(targetURL)}\`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }]
+        query: query,
+        dataType: ['Survey (FNDDS)', 'SR Legacy', 'Branded'],
+        pageSize: 20
       })
     });
 
     if (!response.ok) {
-      throw new Error(\`Gemini API error: \${response.status}\`);
+      throw new Error(\`USDA API error: \${response.status}\`);
     }
 
     const data = await response.json();
-    return data.candidates[0].content.parts[0].text;
+    return data.foods;
+  }
+
+  // OpenWeather API
+  async getWeather(city) {
+    const targetURL = \`https://api.openweathermap.org/data/2.5/weather?q=\${city}\`;
+    
+    const response = await fetch(\`\${this.proxyURL}?target_url=\${encodeURIComponent(targetURL)}\`);
+    
+    if (!response.ok) {
+      throw new Error(\`Weather API error: \${response.status}\`);
+    }
+    
+    return response.json();
+  }
+
+  // Stripe API
+  async createCustomer(email) {
+    const targetURL = 'https://api.stripe.com/v1/customers';
+    
+    const response = await fetch(\`\${this.proxyURL}?target_url=\${encodeURIComponent(targetURL)}\`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: \`email=\${encodeURIComponent(email)}\`
+    });
+    
+    return response.json();
   }
 }
 
 // Usage in React
-const [result, setResult] = useState('');
+const [foods, setFoods] = useState([]);
+const [weather, setWeather] = useState(null);
 
-const handleGenerate = async () => {
-  const api = new GeminiAPI('YOUR_PROJECT_ID');
+const api = new MultiAPIService('my-food-app');
+
+const searchFoods = async (query) => {
   try {
-    const text = await api.generateText('Write a short story about AI');
-    setResult(text);
+    const results = await api.searchFood(query);
+    setFoods(results);
   } catch (error) {
-    console.error('Error:', error);
+    console.error('Food search error:', error);
+  }
+};
+
+const fetchWeather = async (city) => {
+  try {
+    const data = await api.getWeather(city);
+    setWeather(data);
+  } catch (error) {
+    console.error('Weather error:', error);
   }
 };
         </div>

@@ -18,11 +18,14 @@ export class ProxyManager {
     
     // Extract target URL from request
     const url = new URL(request.url);
-    const targetUrl = url.searchParams.get('target_url');
+    let targetUrl = url.searchParams.get('target_url');
     
     if (!targetUrl) {
       return new Response('Missing target_url parameter', { status: 400 });
     }
+    
+    // Modify target URL to add query parameters if needed
+    targetUrl = this.modifyTargetUrl(targetUrl, secrets);
 
     try {
       // Create new request with modified headers
@@ -33,13 +36,8 @@ export class ProxyManager {
       proxyHeaders.delete('cf-connecting-ip');
       proxyHeaders.delete('cf-ray');
       
-      // Add API keys from project secrets
-      for (const [key, secretData] of Object.entries(secrets)) {
-        if (key.startsWith('header_')) {
-          const headerName = key.replace('header_', '').replace(/_/g, '-');
-          proxyHeaders.set(headerName, secretData.value);
-        }
-      }
+      // Add API-specific authentication
+      await this.injectApiAuthentication(proxyHeaders, secrets, targetUrl);
 
       // Create proxy request
       const proxyRequest = new Request(targetUrl, {
@@ -95,6 +93,108 @@ export class ProxyManager {
     // Store in KV with TTL (30 days)
     const logKey = `log:${projectId}:${Date.now()}`;
     await this.env.APIPROXY_PROJECTS_KV.put(logKey, JSON.stringify(logEntry), { expirationTtl: 2592000 });
+  }
+
+  // Inject API-specific authentication based on target URL
+  async injectApiAuthentication(headers, secrets, targetUrl) {
+    const urlObj = new URL(targetUrl);
+    const domain = urlObj.hostname;
+    
+    // API-specific configurations
+    const apiConfigs = {
+      'api.nal.usda.gov': {
+        authType: 'query_param',
+        param: 'api_key',
+        secretKey: 'usda_api_key'
+      },
+      'api.openweathermap.org': {
+        authType: 'query_param', 
+        param: 'appid',
+        secretKey: 'openweather_api_key'
+      },
+      'api.stripe.com': {
+        authType: 'header',
+        header: 'Authorization',
+        format: 'Bearer {key}',
+        secretKey: 'stripe_api_key'
+      },
+      'api.github.com': {
+        authType: 'header',
+        header: 'Authorization',
+        format: 'token {key}',
+        secretKey: 'github_api_key'
+      },
+      'maps.googleapis.com': {
+        authType: 'query_param',
+        param: 'key',
+        secretKey: 'google_maps_api_key'
+      },
+      'generativelanguage.googleapis.com': {
+        authType: 'query_param',
+        param: 'key',
+        secretKey: 'google_gemini_api_key'
+      }
+    };
+    
+    // Check if we have a specific config for this API
+    const config = apiConfigs[domain];
+    if (config && secrets[config.secretKey]) {
+      const apiKey = secrets[config.secretKey].value;
+      
+      if (config.authType === 'header') {
+        const authValue = config.format ? config.format.replace('{key}', apiKey) : apiKey;
+        headers.set(config.header, authValue);
+      }
+      // Query param injection is handled in the URL modification step
+      
+      return;
+    }
+    
+    // Fallback to legacy header_ prefix system for backward compatibility
+    for (const [key, secretData] of Object.entries(secrets)) {
+      if (key.startsWith('header_')) {
+        const headerName = key.replace('header_', '').replace(/_/g, '-');
+        headers.set(headerName, secretData.value);
+      }
+    }
+  }
+  
+  // Modify target URL to add query parameters if needed
+  modifyTargetUrl(targetUrl, secrets) {
+    const urlObj = new URL(targetUrl);
+    const domain = urlObj.hostname;
+    
+    // API-specific configurations (same as above)
+    const apiConfigs = {
+      'api.nal.usda.gov': {
+        authType: 'query_param',
+        param: 'api_key',
+        secretKey: 'usda_api_key'
+      },
+      'api.openweathermap.org': {
+        authType: 'query_param',
+        param: 'appid', 
+        secretKey: 'openweather_api_key'
+      },
+      'maps.googleapis.com': {
+        authType: 'query_param',
+        param: 'key',
+        secretKey: 'google_maps_api_key'
+      },
+      'generativelanguage.googleapis.com': {
+        authType: 'query_param',
+        param: 'key',
+        secretKey: 'google_gemini_api_key'
+      }
+    };
+    
+    const config = apiConfigs[domain];
+    if (config && config.authType === 'query_param' && secrets[config.secretKey]) {
+      urlObj.searchParams.set(config.param, secrets[config.secretKey].value);
+      return urlObj.toString();
+    }
+    
+    return targetUrl;
   }
 
   // Get request logs for a project

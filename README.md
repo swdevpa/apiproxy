@@ -12,10 +12,12 @@ A secure, centralized API proxy management system hosted on Cloudflare Workers w
 - Suspicious activity detection and logging
 - DDoS protection via Cloudflare Edge Network
 
-📱 **Multi-Project Architecture**
+📱 **Multi-Project & Multi-API Architecture**
 - Support for Web Apps, iOS/Android apps, Expo projects
+- **Multiple APIs per project** - USDA, OpenWeather, Stripe, GitHub, Google Maps and more
+- **Intelligent API detection** - automatic authentication method based on target URL
+- **API-specific configurations** - query parameters, headers, Bearer tokens automatically handled
 - Complete project isolation with encrypted secret management
-- Automatic HTTP header injection (`header_` prefix convention)
 - Real-time request logging and monitoring per project
 - RESTful API for programmatic management
 
@@ -113,25 +115,62 @@ Access comprehensive integration guides at `/docs` or `/documentation` after dep
 
 ## API Usage Examples
 
-### Basic Proxy Request
+### Multiple APIs in One Project
+
+**Configure multiple APIs in your project:**
+```
+Project: "my-food-app"
+Secrets:
+- usda_api_key: "YOUR_USDA_KEY"
+- openweather_api_key: "YOUR_WEATHER_KEY"  
+- stripe_api_key: "YOUR_STRIPE_KEY"
+- github_api_key: "YOUR_GITHUB_KEY"
+```
+
+**Use different APIs from the same proxy endpoint:**
 
 ```javascript
-// Your app makes requests through the proxy
-const response = await fetch(
-  'https://your-worker.workers.dev/proxy/my-project-id?target_url=https://api.openai.com/v1/chat/completions',
+const proxyURL = 'https://your-worker.workers.dev/proxy/my-food-app';
+
+// USDA Food API - automatically adds ?api_key=YOUR_USDA_KEY
+const foodData = await fetch(
+  `${proxyURL}?target_url=${encodeURIComponent('https://api.nal.usda.gov/fdc/v1/foods/search')}`,
   {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      model: "gpt-3.5-turbo",
-      messages: [{ role: "user", content: "Hello!" }]
-    })
+    body: JSON.stringify({ query: "apple", pageSize: 10 })
   }
 );
 
-// API keys are automatically injected server-side
-// Your OpenAI API key (stored as header_authorization) is added automatically
+// OpenWeather API - automatically adds ?appid=YOUR_WEATHER_KEY
+const weather = await fetch(
+  `${proxyURL}?target_url=${encodeURIComponent('https://api.openweathermap.org/data/2.5/weather?q=Berlin')}`
+);
+
+// Stripe API - automatically adds Authorization: Bearer YOUR_STRIPE_KEY
+const customers = await fetch(
+  `${proxyURL}?target_url=${encodeURIComponent('https://api.stripe.com/v1/customers')}`,
+  { method: 'GET' }
+);
+
+// GitHub API - automatically adds Authorization: token YOUR_GITHUB_KEY
+const repos = await fetch(
+  `${proxyURL}?target_url=${encodeURIComponent('https://api.github.com/user/repos')}`
+);
 ```
+
+### Supported API Configurations
+
+The system automatically detects and configures authentication for popular APIs:
+
+| API | Secret Key | Auth Method | Example |
+|-----|------------|-------------|---------|
+| **USDA FoodData** | `usda_api_key` | Query param `api_key` | `api.nal.usda.gov` |
+| **OpenWeather** | `openweather_api_key` | Query param `appid` | `api.openweathermap.org` |
+| **Stripe** | `stripe_api_key` | Header `Authorization: Bearer` | `api.stripe.com` |
+| **GitHub** | `github_api_key` | Header `Authorization: token` | `api.github.com` |
+| **Google Maps** | `google_maps_api_key` | Query param `key` | `maps.googleapis.com` |
+| **Custom APIs** | `header_*` | Custom headers | Legacy support |
 
 ### iOS Swift Integration
 

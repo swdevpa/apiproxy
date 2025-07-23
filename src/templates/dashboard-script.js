@@ -345,34 +345,102 @@ function openAddApiConfigModal() {
   }
   
   const content = ApiConfigManager.getApiConfigFormHTML();
+  console.log('ApiConfigManager HTML:', content);
+  console.log('Header format element present in template:', content.includes('id="header-format"'));
+  
   const footer = \`
     <button type="button" class="btn btn-secondary" onclick="addApiConfigModal.close()">Cancel</button>
     <button type="button" class="btn btn-primary" id="save-new-api-config-btn" onclick="saveNewApiConfig()">Add Configuration</button>
   \`;
   
-  addApiConfigModal.setContent(content).setFooter(footer).open();
+  // If template doesn't contain header-format, inject it manually
+  if (!content.includes('id="header-format"')) {
+    console.error('Header format element missing from template, injecting manually');
+    const headerFormatHTML = \`
+      <div class="form-group" id="header-format" style="display: none;">
+        <label class="form-label">Header Format (Optional)</label>
+        <input type="text" id="format-input" class="form-input" 
+               value="Bearer {key}" placeholder="Bearer {key}">
+        <small style="color: var(--text-secondary); font-size: 0.75rem;">
+          Format template. Use {key} as placeholder (e.g., "Bearer {key}")
+        </small>
+      </div>
+    \`;
+    // Inject after header-config - using simpler string approach
+    const headerConfigEndTag = '</div>';
+    const headerConfigIndex = content.indexOf('id="header-config"');
+    if (headerConfigIndex !== -1) {
+      const nextDivEnd = content.indexOf(headerConfigEndTag, headerConfigIndex) + headerConfigEndTag.length;
+      const modifiedContent = content.slice(0, nextDivEnd) + headerFormatHTML + content.slice(nextDivEnd);
+      addApiConfigModal.setContent(modifiedContent).setFooter(footer).open();
+    } else {
+      // Fallback: just append to content
+      addApiConfigModal.setContent(content + headerFormatHTML).setFooter(footer).open();
+    }
+  } else {
+    addApiConfigModal.setContent(content).setFooter(footer).open();
+  }
   
-  // Add auth type change handler
+  // Add auth type change handler and force initial state
   setTimeout(() => {
     const authTypeSelect = document.getElementById('auth-type-select');
     if (authTypeSelect) {
       authTypeSelect.addEventListener('change', toggleApiConfigFields);
+      // Force initial state
+      toggleApiConfigFields();
     }
   }, 100);
 }
 
 // Toggle form fields based on auth type
 function toggleApiConfigFields() {
-  const authType = document.getElementById('auth-type-select').value;
+  console.log('toggleApiConfigFields called');
+  
+  const authTypeSelect = document.getElementById('auth-type-select');
+  if (!authTypeSelect) {
+    console.error('auth-type-select not found');
+    return;
+  }
+  
+  const authType = authTypeSelect.value;
+  console.log('Auth type:', authType);
+  
   const headerConfig = document.getElementById('header-config');
+  const headerFormat = document.getElementById('header-format');
   const paramConfig = document.getElementById('param-config');
   
+  console.log('Elements found:', {
+    headerConfig: !!headerConfig,
+    headerFormat: !!headerFormat,
+    paramConfig: !!paramConfig
+  });
+  
   if (authType === 'header') {
-    headerConfig.style.display = 'block';
-    paramConfig.style.display = 'none';
+    if (headerConfig) {
+      headerConfig.style.display = 'block';
+      console.log('Showing headerConfig');
+    }
+    if (headerFormat) {
+      headerFormat.style.display = 'block';
+      console.log('Showing headerFormat');
+    }
+    if (paramConfig) {
+      paramConfig.style.display = 'none';
+      console.log('Hiding paramConfig');
+    }
   } else {
-    headerConfig.style.display = 'none';
-    paramConfig.style.display = 'block';
+    if (headerConfig) {
+      headerConfig.style.display = 'none';
+      console.log('Hiding headerConfig');
+    }
+    if (headerFormat) {
+      headerFormat.style.display = 'none';
+      console.log('Hiding headerFormat');
+    }
+    if (paramConfig) {
+      paramConfig.style.display = 'block';
+      console.log('Showing paramConfig');
+    }
   }
 }
 
@@ -394,8 +462,17 @@ async function saveNewApiConfig() {
   };
   
   if (authType === 'header') {
-    const header = document.getElementById('header-input').value.trim();
-    const format = document.getElementById('format-input').value.trim();
+    const headerInput = document.getElementById('header-input');
+    const formatInput = document.getElementById('format-input');
+    
+    if (!headerInput) {
+      alert('Header input field not found. Please make sure you selected "HTTP Header" as authentication type.');
+      return;
+    }
+    
+    const header = headerInput.value.trim();
+    const format = formatInput ? formatInput.value.trim() : '';
+    
     if (!header) {
       alert('Please enter header name');
       return;
@@ -403,7 +480,14 @@ async function saveNewApiConfig() {
     config.header = header;
     if (format) config.format = format;
   } else {
-    const param = document.getElementById('param-input').value.trim();
+    const paramInput = document.getElementById('param-input');
+    
+    if (!paramInput) {
+      alert('Parameter input field not found. Please make sure you selected "Query Parameter" as authentication type.');
+      return;
+    }
+    
+    const param = paramInput.value.trim();
     if (!param) {
       alert('Please enter parameter name');
       return;

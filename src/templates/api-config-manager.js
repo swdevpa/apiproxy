@@ -75,18 +75,12 @@ export class ApiConfigManager {
   }
 
   static getApiConfigFormHTML(domain = '', config = {}, isEdit = false) {
-    const domainPlaceholder = isEdit ? domain : 'api.example.com';
-    const authType = config.authType || 'query_param';
-    const secretKey = config.secretKey || '';
-    const header = config.header || 'X-API-Key';
-    const param = config.param || 'api_key';
-    const format = config.format || '';
-    
+    // Ensure all elements are always present in DOM, controlled by JavaScript
     return `
       <div class="form-group">
         <label class="form-label">API Domain</label>
         <input type="text" id="api-domain-input" class="form-input" 
-               value="${domain}" placeholder="${domainPlaceholder}" ${isEdit ? 'readonly' : ''} required>
+               value="${domain}" placeholder="api.example.com" ${isEdit ? 'readonly' : ''} required>
         <small style="color: var(--text-secondary); font-size: 0.75rem;">
           Enter the API domain (e.g., api.example.com)
         </small>
@@ -95,33 +89,33 @@ export class ApiConfigManager {
       <div class="form-group">
         <label class="form-label">Authentication Type</label>
         <select id="auth-type-select" class="form-input" required>
-          <option value="query_param" ${authType === 'query_param' ? 'selected' : ''}>Query Parameter</option>
-          <option value="header" ${authType === 'header' ? 'selected' : ''}>HTTP Header</option>
+          <option value="query_param">Query Parameter</option>
+          <option value="header">HTTP Header</option>
         </select>
       </div>
       
-      <div class="form-group" id="header-config" style="display: ${authType === 'header' ? 'block' : 'none'};">
+      <div class="form-group" id="header-config" style="display: none;">
         <label class="form-label">Header Name</label>
         <input type="text" id="header-input" class="form-input" 
-               value="${header}" placeholder="X-API-Key" required>
+               value="${config.header || 'Authorization'}" placeholder="X-API-Key" required>
         <small style="color: var(--text-secondary); font-size: 0.75rem;">
           HTTP header name for the API key
         </small>
       </div>
       
-      <div class="form-group" id="header-format" style="display: ${authType === 'header' ? 'block' : 'none'};">
+      <div class="form-group" id="header-format" style="display: none;">
         <label class="form-label">Header Format (Optional)</label>
         <input type="text" id="format-input" class="form-input" 
-               value="${format}" placeholder="Bearer {key}">
+               value="${config.format || 'Bearer {key}'}" placeholder="Bearer {key}">
         <small style="color: var(--text-secondary); font-size: 0.75rem;">
           Format template. Use {key} as placeholder (e.g., "Bearer {key}")
         </small>
       </div>
       
-      <div class="form-group" id="param-config" style="display: ${authType === 'query_param' ? 'block' : 'none'};">
+      <div class="form-group" id="param-config" style="display: block;">
         <label class="form-label">Parameter Name</label>
         <input type="text" id="param-input" class="form-input" 
-               value="${param}" placeholder="api_key" required>
+               value="${config.param || ''}" placeholder="api_key" required>
         <small style="color: var(--text-secondary); font-size: 0.75rem;">
           Query parameter name for the API key
         </small>
@@ -130,30 +124,12 @@ export class ApiConfigManager {
       <div class="form-group">
         <label class="form-label">Secret Key Name</label>
         <input type="text" id="secret-key-input" class="form-input" 
-               value="${secretKey}" placeholder="my_api_key" required>
+               value="${config.secretKey || ''}" placeholder="my_api_key" required>
         <small style="color: var(--text-secondary); font-size: 0.75rem;">
           Name of the secret that contains the API key for this API
         </small>
       </div>
       
-      <script>
-        document.getElementById('auth-type-select').addEventListener('change', function() {
-          const authType = this.value;
-          const headerConfig = document.getElementById('header-config');
-          const headerFormat = document.getElementById('header-format');
-          const paramConfig = document.getElementById('param-config');
-          
-          if (authType === 'header') {
-            headerConfig.style.display = 'block';
-            headerFormat.style.display = 'block';
-            paramConfig.style.display = 'none';
-          } else {
-            headerConfig.style.display = 'none';
-            headerFormat.style.display = 'none';
-            paramConfig.style.display = 'block';
-          }
-        });
-      </script>
     `;
   }
 

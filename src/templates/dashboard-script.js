@@ -346,17 +346,50 @@ function openAddApiConfigModal() {
   
   const content = ApiConfigManager.getApiConfigFormHTML();
   console.log('ApiConfigManager HTML:', content);
-  console.log('Header format element present in template:', content.includes('id="header-format"'));
+  console.log('Header format element present:', content.includes('id="header-format"'));
+  console.log('OAuth option present:', content.includes('value="oauth"'));
+  console.log('OAuth config section present:', content.includes('id="oauth-config"'));
   
   const footer = \`
     <button type="button" class="btn btn-secondary" onclick="addApiConfigModal.close()">Cancel</button>
     <button type="button" class="btn btn-primary" id="save-new-api-config-btn" onclick="saveNewApiConfig()">Add Configuration</button>
   \`;
   
-  // If template doesn't contain header-format, inject it manually
-  if (!content.includes('id="header-format"')) {
-    console.error('Header format element missing from template, injecting manually');
-    const headerFormatHTML = \`
+  // Check if template is missing OAuth support or header-format
+  const hasOAuth = content.includes('value="oauth"') && content.includes('id="oauth-config"');
+  const hasHeaderFormat = content.includes('id="header-format"');
+  
+  if (!hasOAuth || !hasHeaderFormat) {
+    console.error('Template missing OAuth or header-format support, using fallback');
+    // Use complete fallback template with full OAuth support
+    const fallbackContent = \`
+      <div class="form-group">
+        <label class="form-label">API Domain</label>
+        <input type="text" id="api-domain-input" class="form-input" 
+               placeholder="platform.fatsecret.com" required>
+        <small style="color: var(--text-secondary); font-size: 0.75rem;">
+          Enter the API domain (e.g., api.example.com)
+        </small>
+      </div>
+      
+      <div class="form-group">
+        <label class="form-label">Authentication Type</label>
+        <select id="auth-type-select" class="form-input" required>
+          <option value="query_param">Query Parameter</option>
+          <option value="header">HTTP Header</option>
+          <option value="oauth">OAuth 2.0</option>
+        </select>
+      </div>
+      
+      <div class="form-group" id="header-config" style="display: none;">
+        <label class="form-label">Header Name</label>
+        <input type="text" id="header-input" class="form-input" 
+               value="Authorization" placeholder="X-API-Key" required>
+        <small style="color: var(--text-secondary); font-size: 0.75rem;">
+          HTTP header name for the API key
+        </small>
+      </div>
+      
       <div class="form-group" id="header-format" style="display: none;">
         <label class="form-label">Header Format (Optional)</label>
         <input type="text" id="format-input" class="form-input" 
@@ -365,18 +398,77 @@ function openAddApiConfigModal() {
           Format template. Use {key} as placeholder (e.g., "Bearer {key}")
         </small>
       </div>
+      
+      <div class="form-group" id="param-config" style="display: block;">
+        <label class="form-label">Parameter Name</label>
+        <input type="text" id="param-input" class="form-input" 
+               placeholder="api_key" required>
+        <small style="color: var(--text-secondary); font-size: 0.75rem;">
+          Query parameter name for the API key
+        </small>
+      </div>
+      
+      <div class="form-group" id="oauth-config" style="display: none;">
+        <h4 style="margin-bottom: var(--spacing-md); color: var(--text-primary);">OAuth 2.0 Configuration</h4>
+        
+        <div class="form-group">
+          <label class="form-label">Token URL</label>
+          <input type="text" id="oauth-token-url" class="form-input" 
+                 placeholder="https://oauth.fatsecret.com/connect/token" required>
+          <small style="color: var(--text-secondary); font-size: 0.75rem;">
+            OAuth token endpoint URL
+          </small>
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label">Client ID Secret Name</label>
+          <input type="text" id="oauth-client-id-secret" class="form-input" 
+                 placeholder="fatsecret_client_id" required>
+          <small style="color: var(--text-secondary); font-size: 0.75rem;">
+            Name of secret containing OAuth Client ID
+          </small>
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label">Client Secret Secret Name</label>
+          <input type="text" id="oauth-client-secret-secret" class="form-input" 
+                 placeholder="fatsecret_client_secret" required>
+          <small style="color: var(--text-secondary); font-size: 0.75rem;">
+            Name of secret containing OAuth Client Secret
+          </small>
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label">Grant Type</label>
+          <select id="oauth-grant-type" class="form-input" required>
+            <option value="client_credentials">Client Credentials</option>
+            <option value="authorization_code">Authorization Code</option>
+          </select>
+          <small style="color: var(--text-secondary); font-size: 0.75rem;">
+            OAuth 2.0 grant type
+          </small>
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label">Scope (Optional)</label>
+          <input type="text" id="oauth-scope" class="form-input" 
+                 placeholder="basic read write">
+          <small style="color: var(--text-secondary); font-size: 0.75rem;">
+            OAuth scopes (space-separated)
+          </small>
+        </div>
+      </div>
+      
+      <div class="form-group">
+        <label class="form-label">Secret Key Name</label>
+        <input type="text" id="secret-key-input" class="form-input" 
+               placeholder="fatsecret_access_token" required>
+        <small style="color: var(--text-secondary); font-size: 0.75rem;">
+          Name of the secret that contains the API key for this API
+        </small>
+      </div>
     \`;
-    // Inject after header-config - using simpler string approach
-    const headerConfigEndTag = '</div>';
-    const headerConfigIndex = content.indexOf('id="header-config"');
-    if (headerConfigIndex !== -1) {
-      const nextDivEnd = content.indexOf(headerConfigEndTag, headerConfigIndex) + headerConfigEndTag.length;
-      const modifiedContent = content.slice(0, nextDivEnd) + headerFormatHTML + content.slice(nextDivEnd);
-      addApiConfigModal.setContent(modifiedContent).setFooter(footer).open();
-    } else {
-      // Fallback: just append to content
-      addApiConfigModal.setContent(content + headerFormatHTML).setFooter(footer).open();
-    }
+    addApiConfigModal.setContent(fallbackContent).setFooter(footer).open();
   } else {
     addApiConfigModal.setContent(content).setFooter(footer).open();
   }
@@ -408,13 +500,22 @@ function toggleApiConfigFields() {
   const headerConfig = document.getElementById('header-config');
   const headerFormat = document.getElementById('header-format');
   const paramConfig = document.getElementById('param-config');
+  const oauthConfig = document.getElementById('oauth-config');
   
   console.log('Elements found:', {
     headerConfig: !!headerConfig,
     headerFormat: !!headerFormat,
-    paramConfig: !!paramConfig
+    paramConfig: !!paramConfig,
+    oauthConfig: !!oauthConfig
   });
   
+  // Hide all config sections first
+  if (headerConfig) headerConfig.style.display = 'none';
+  if (headerFormat) headerFormat.style.display = 'none';
+  if (paramConfig) paramConfig.style.display = 'none';
+  if (oauthConfig) oauthConfig.style.display = 'none';
+  
+  // Show relevant sections based on auth type
   if (authType === 'header') {
     if (headerConfig) {
       headerConfig.style.display = 'block';
@@ -424,22 +525,15 @@ function toggleApiConfigFields() {
       headerFormat.style.display = 'block';
       console.log('Showing headerFormat');
     }
-    if (paramConfig) {
-      paramConfig.style.display = 'none';
-      console.log('Hiding paramConfig');
-    }
-  } else {
-    if (headerConfig) {
-      headerConfig.style.display = 'none';
-      console.log('Hiding headerConfig');
-    }
-    if (headerFormat) {
-      headerFormat.style.display = 'none';
-      console.log('Hiding headerFormat');
-    }
+  } else if (authType === 'query_param') {
     if (paramConfig) {
       paramConfig.style.display = 'block';
       console.log('Showing paramConfig');
+    }
+  } else if (authType === 'oauth') {
+    if (oauthConfig) {
+      oauthConfig.style.display = 'block';
+      console.log('Showing oauthConfig');
     }
   }
 }
@@ -479,7 +573,7 @@ async function saveNewApiConfig() {
     }
     config.header = header;
     if (format) config.format = format;
-  } else {
+  } else if (authType === 'query_param') {
     const paramInput = document.getElementById('param-input');
     
     if (!paramInput) {
@@ -493,6 +587,34 @@ async function saveNewApiConfig() {
       return;
     }
     config.param = param;
+  } else if (authType === 'oauth') {
+    const tokenUrlInput = document.getElementById('oauth-token-url');
+    const clientIdSecretInput = document.getElementById('oauth-client-id-secret');
+    const clientSecretSecretInput = document.getElementById('oauth-client-secret-secret');
+    const grantTypeInput = document.getElementById('oauth-grant-type');
+    const scopeInput = document.getElementById('oauth-scope');
+    
+    if (!tokenUrlInput || !clientIdSecretInput || !clientSecretSecretInput || !grantTypeInput) {
+      alert('OAuth configuration fields not found. Please make sure you selected "OAuth 2.0" as authentication type.');
+      return;
+    }
+    
+    const tokenUrl = tokenUrlInput.value.trim();
+    const clientIdSecret = clientIdSecretInput.value.trim();
+    const clientSecretSecret = clientSecretSecretInput.value.trim();
+    const grantType = grantTypeInput.value;
+    const scope = scopeInput ? scopeInput.value.trim() : '';
+    
+    if (!tokenUrl || !clientIdSecret || !clientSecretSecret) {
+      alert('Please fill in all required OAuth fields');
+      return;
+    }
+    
+    config.oauthTokenUrl = tokenUrl;
+    config.oauthClientIdSecret = clientIdSecret;
+    config.oauthClientSecretSecret = clientSecretSecret;
+    config.oauthGrantType = grantType;
+    if (scope) config.oauthScope = scope;
   }
   
   saveBtn.textContent = 'Adding...';

@@ -7,6 +7,7 @@ A secure, centralized API proxy management system hosted on Cloudflare Workers w
 🔒 **Enterprise Security**
 - AES-GCM encrypted secret storage with client-side encryption
 - Token-based authentication with constant-time comparison
+- **Automatic OAuth 2.0 token refresh** - never worry about expired tokens
 - Configurable rate limiting (200 req/hour default)
 - Comprehensive security headers (HSTS, CSP, XSS protection)
 - Suspicious activity detection and logging
@@ -18,6 +19,7 @@ A secure, centralized API proxy management system hosted on Cloudflare Workers w
 - **Intelligent API detection** - automatic authentication method based on target URL
 - **Custom API configurations** - add any API without code changes via dashboard
 - **Built-in + Custom API support** - pre-configured popular APIs + user-defined configurations
+- **OAuth 2.0 with auto-refresh** - FatSecret, Twitter, and other OAuth APIs work seamlessly
 - **API-specific configurations** - query parameters, headers, Bearer tokens automatically handled
 - Complete project isolation with encrypted secret management
 - Real-time request logging and monitoring per project
@@ -182,11 +184,30 @@ The system automatically detects and configures authentication for popular APIs:
 # Create custom API configuration
 POST /api/api-configs/{projectId}/{domain}
 {
-  "authType": "query_param",        # or "header"
+  "authType": "query_param",        # or "header" or "oauth"
   "param": "api_key",              # for query_param type
   "header": "X-API-Key",           # for header type  
   "format": "Bearer {key}",        # optional header format
-  "secretKey": "my_api_key"        # secret key name
+  "secretKey": "my_api_key",       # secret key name
+  
+  # OAuth 2.0 specific fields (when authType is "oauth")
+  "oauthTokenUrl": "https://oauth.example.com/token",
+  "oauthClientIdSecret": "client_id_secret_name",
+  "oauthClientSecretSecret": "client_secret_secret_name", 
+  "oauthGrantType": "client_credentials",    # or "authorization_code"
+  "oauthScope": "basic read write"           # optional
+}
+
+# Example: OAuth 2.0 API configuration (with automatic token refresh)
+POST /api/api-configs/my-project/platform.fatsecret.com
+{
+  "authType": "oauth",
+  "oauthTokenUrl": "https://oauth.fatsecret.com/connect/token",
+  "oauthClientIdSecret": "fatsecret_client_id",
+  "oauthClientSecretSecret": "fatsecret_client_secret",
+  "oauthGrantType": "client_credentials",
+  "oauthScope": "basic",
+  "secretKey": "fatsecret_access_token"
 }
 
 # Example: RapidAPI configuration
@@ -201,6 +222,46 @@ POST /api/api-configs/my-project/api.rapidapi.com
 **Then just add the secret and use:**
 1. Add secret: `rapidapi_key` = `your-rapidapi-key`
 2. Use in app: `proxy/my-project?target_url=https://api.rapidapi.com/endpoint`
+
+### OAuth 2.0 with Automatic Token Refresh 🚀
+
+**Perfect for APIs with expiring tokens like FatSecret, Twitter, etc.:**
+
+1. **Configure OAuth 2.0 API** (one-time setup):
+   ```bash
+   POST /api/api-configs/my-project/platform.fatsecret.com
+   {
+     "authType": "oauth",
+     "oauthTokenUrl": "https://oauth.fatsecret.com/connect/token",
+     "oauthClientIdSecret": "fatsecret_client_id",
+     "oauthClientSecretSecret": "fatsecret_client_secret", 
+     "oauthGrantType": "client_credentials",
+     "oauthScope": "basic",
+     "secretKey": "fatsecret_access_token"
+   }
+   ```
+
+2. **Add OAuth credentials as secrets:**
+   - `fatsecret_client_id` → Your Consumer Key
+   - `fatsecret_client_secret` → Your Consumer Secret
+   - `fatsecret_access_token` → Initial access token (will be auto-refreshed)
+
+3. **Use normally in your app:**
+   ```javascript
+   // Token automatically refreshed when expired (401 response)
+   const response = await fetch(
+     `${proxyURL}?target_url=${encodeURIComponent('https://platform.fatsecret.com/rest/food/v4?food_id=33691')}`
+   );
+   ```
+
+**What happens automatically:**
+- ✅ **401 Detection**: Proxy detects expired token
+- ✅ **Auto-Refresh**: Gets new token using OAuth credentials
+- ✅ **Secret Update**: Updates stored token automatically
+- ✅ **Request Retry**: Retries original request with new token
+- ✅ **Metadata Tracking**: Stores expiration time for optimization
+
+**Perfect for production iOS/Android apps** - your users never experience authentication failures!
 
 ### Fallback System
 1. **Custom Config** (highest priority) - user-defined via dashboard

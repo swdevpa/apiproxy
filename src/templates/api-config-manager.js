@@ -91,6 +91,7 @@ export class ApiConfigManager {
         <select id="auth-type-select" class="form-input" required>
           <option value="query_param">Query Parameter</option>
           <option value="header">HTTP Header</option>
+          <option value="oauth">OAuth 2.0</option>
         </select>
       </div>
       
@@ -119,6 +120,57 @@ export class ApiConfigManager {
         <small style="color: var(--text-secondary); font-size: 0.75rem;">
           Query parameter name for the API key
         </small>
+      </div>
+      
+      <div class="form-group" id="oauth-config" style="display: none;">
+        <h4 style="margin-bottom: var(--spacing-md); color: var(--text-primary);">OAuth 2.0 Configuration</h4>
+        
+        <div class="form-group">
+          <label class="form-label">Token URL</label>
+          <input type="text" id="oauth-token-url" class="form-input" 
+                 value="${config.oauthTokenUrl || ''}" placeholder="https://oauth.example.com/token" required>
+          <small style="color: var(--text-secondary); font-size: 0.75rem;">
+            OAuth token endpoint URL
+          </small>
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label">Client ID Secret Name</label>
+          <input type="text" id="oauth-client-id-secret" class="form-input" 
+                 value="${config.oauthClientIdSecret || ''}" placeholder="my_client_id" required>
+          <small style="color: var(--text-secondary); font-size: 0.75rem;">
+            Name of secret containing OAuth Client ID
+          </small>
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label">Client Secret Secret Name</label>
+          <input type="text" id="oauth-client-secret-secret" class="form-input" 
+                 value="${config.oauthClientSecretSecret || ''}" placeholder="my_client_secret" required>
+          <small style="color: var(--text-secondary); font-size: 0.75rem;">
+            Name of secret containing OAuth Client Secret
+          </small>
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label">Grant Type</label>
+          <select id="oauth-grant-type" class="form-input" required>
+            <option value="client_credentials">Client Credentials</option>
+            <option value="authorization_code">Authorization Code</option>
+          </select>
+          <small style="color: var(--text-secondary); font-size: 0.75rem;">
+            OAuth 2.0 grant type
+          </small>
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label">Scope (Optional)</label>
+          <input type="text" id="oauth-scope" class="form-input" 
+                 value="${config.oauthScope || ''}" placeholder="basic read write">
+          <small style="color: var(--text-secondary); font-size: 0.75rem;">
+            OAuth scopes (space-separated)
+          </small>
+        </div>
       </div>
       
       <div class="form-group">

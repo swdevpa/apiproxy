@@ -500,6 +500,45 @@ const handleAIGenerate = async () => {
           Secret Key: <code class="highlight">alphavantage_key</code>
         </div>
 
+        <h3>🚀 OAuth 2.0 with Auto-Refresh</h3>
+        
+        <h4>🥗 FatSecret API (Food & Nutrition)</h4>
+        <div class="api-config">
+          <strong>OAuth Configuration:</strong><br>
+          Domain: <code class="highlight">platform.fatsecret.com</code><br>
+          Auth Type: <code class="highlight">oauth</code><br>
+          Token URL: <code class="highlight">https://oauth.fatsecret.com/connect/token</code><br>
+          Grant Type: <code class="highlight">client_credentials</code><br>
+          Scope: <code class="highlight">basic</code><br>
+          <br>
+          <strong>Required Secrets:</strong><br>
+          • <code class="highlight">fatsecret_client_id</code> → Your Consumer Key<br>
+          • <code class="highlight">fatsecret_client_secret</code> → Your Consumer Secret<br>
+          • <code class="highlight">fatsecret_access_token</code> → Initial token (auto-refreshed)
+        </div>
+        
+        <div class="success">
+          <strong>✅ Automatic Benefits:</strong><br>
+          • Token automatically refreshed on expiration (401 response)<br>
+          • Zero downtime - requests automatically retried with new token<br>
+          • Perfect for production iOS/Android apps<br>
+          • No client-side token management needed
+        </div>
+
+        <h4>🐦 Twitter API v2 (Example)</h4>
+        <div class="api-config">
+          <strong>OAuth Configuration:</strong><br>
+          Domain: <code class="highlight">api.twitter.com</code><br>
+          Auth Type: <code class="highlight">oauth</code><br>
+          Token URL: <code class="highlight">https://api.twitter.com/oauth2/token</code><br>
+          Grant Type: <code class="highlight">client_credentials</code><br>
+          <br>
+          <strong>Required Secrets:</strong><br>
+          • <code class="highlight">twitter_client_id</code> → Your App API Key<br>
+          • <code class="highlight">twitter_client_secret</code> → Your App API Secret<br>
+          • <code class="highlight">twitter_access_token</code> → Bearer token (auto-refreshed)
+        </div>
+
         <h3>📊 Legacy Header Configuration</h3>
         <div class="warning">
           <strong>⚠️ Legacy Method:</strong> Still supported for backward compatibility

@@ -44,13 +44,16 @@ export function getHeaderScript() {
   return `
     <script>
       // Header authentication and navigation scripts - Global scope
-      window.logout = function() {
+      function logout() {
         if (confirm('Are you sure you want to logout?')) {
           localStorage.removeItem('adminToken');
           sessionStorage.clear();
           window.location.href = '/';
         }
       }
+      
+      // Export to global scope
+      window.logout = logout;
       
       // Check authentication status
       function checkAuthStatus() {

@@ -52,6 +52,15 @@ export class Router {
         return this.securityManager.addSecurityHeaders(this.handleDashboardScript());
       }
 
+      // Serve JavaScript modules
+      if (path === '/modal-component.js') {
+        return this.securityManager.addSecurityHeaders(await this.handleModuleFile('modal-component.js'));
+      }
+
+      if (path === '/secret-manager.js') {
+        return this.securityManager.addSecurityHeaders(await this.handleModuleFile('secret-manager.js'));
+      }
+
       if (path === '/docs' || path === '/documentation') {
         return this.securityManager.addSecurityHeaders(this.handleDocs());
       }

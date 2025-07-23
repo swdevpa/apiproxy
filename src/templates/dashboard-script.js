@@ -30,6 +30,17 @@ function initializeModules() {
   }
 }
 
+// Export functions to global scope for onclick handlers
+window.showTab = showTab;
+window.manageProject = manageProject;
+window.deleteProject = deleteProject;
+window.openAddSecretModal = openAddSecretModal;
+window.saveNewSecret = saveNewSecret;
+window.openEditSecretModal = openEditSecretModal;
+window.saveEditedSecret = saveEditedSecret;
+window.confirmDeleteSecret = confirmDeleteSecret;
+window.deleteSecret = deleteSecret;
+
 function showTab(tabName) {
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
   document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));

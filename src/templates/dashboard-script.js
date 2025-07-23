@@ -143,7 +143,8 @@ async function loadSecrets(projectId) {
           <strong>\${key}</strong><br>
           <small>Updated: \${new Date(data.updated).toLocaleDateString()}</small>
         </div>
-        <div>
+        <div class="secret-actions">
+          <button class="btn btn-primary" onclick="editSecret('\${key}')">Edit</button>
           <button class="btn btn-danger" onclick="deleteSecret('\${key}')">Delete</button>
         </div>
       </div>
@@ -158,11 +159,18 @@ async function loadSecrets(projectId) {
 async function addSecret() {
   const key = document.getElementById('secret-key').value;
   const value = document.getElementById('secret-value').value;
+  const addBtn = document.getElementById('add-secret-btn');
   
   if (!key || !value) {
     alert('Please enter both key and value');
     return;
   }
+  
+  // Update button text to show what action is being performed
+  const isEditing = key && document.getElementById('secret-key').readOnly;
+  const originalText = addBtn.textContent;
+  addBtn.textContent = isEditing ? 'Updating...' : 'Adding...';
+  addBtn.disabled = true;
   
   try {
     await fetch('/api/secrets/' + currentProjectId + '/' + key, {
@@ -176,9 +184,64 @@ async function addSecret() {
     
     document.getElementById('secret-key').value = '';
     document.getElementById('secret-value').value = '';
+    document.getElementById('secret-key').readOnly = false;
+    document.getElementById('secret-value').placeholder = 'your-api-key-here';
+    addBtn.textContent = 'Add Secret';
+    
+    // Remove cancel button if it exists
+    const cancelBtn = document.getElementById('cancel-edit-btn');
+    if (cancelBtn) {
+      cancelBtn.remove();
+    }
+    
     loadSecrets(currentProjectId);
   } catch (error) {
     console.error('Error adding secret:', error);
+    addBtn.textContent = originalText;
+  } finally {
+    addBtn.disabled = false;
+  }
+}
+
+function editSecret(key) {
+  const keyInput = document.getElementById('secret-key');
+  const valueInput = document.getElementById('secret-value');
+  const addBtn = document.getElementById('add-secret-btn');
+  
+  keyInput.value = key;
+  keyInput.readOnly = true;
+  valueInput.value = '';
+  valueInput.placeholder = 'Enter new value for ' + key;
+  valueInput.focus();
+  
+  addBtn.textContent = 'Update Secret';
+  
+  // Add cancel option
+  if (!document.getElementById('cancel-edit-btn')) {
+    const cancelBtn = document.createElement('button');
+    cancelBtn.id = 'cancel-edit-btn';
+    cancelBtn.className = 'btn btn-secondary';
+    cancelBtn.textContent = 'Cancel';
+    cancelBtn.style.marginLeft = '10px';
+    cancelBtn.onclick = cancelEdit;
+    addBtn.parentNode.insertBefore(cancelBtn, addBtn.nextSibling);
+  }
+}
+
+function cancelEdit() {
+  const keyInput = document.getElementById('secret-key');
+  const valueInput = document.getElementById('secret-value');
+  const addBtn = document.getElementById('add-secret-btn');
+  const cancelBtn = document.getElementById('cancel-edit-btn');
+  
+  keyInput.value = '';
+  keyInput.readOnly = false;
+  valueInput.value = '';
+  valueInput.placeholder = 'your-api-key-here';
+  addBtn.textContent = 'Add Secret';
+  
+  if (cancelBtn) {
+    cancelBtn.remove();
   }
 }
 

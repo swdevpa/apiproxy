@@ -1,4 +1,7 @@
 // Public documentation template
+import { getSharedStyles } from './shared-styles.js';
+import { getHeaderComponent, getHeaderScript } from './header-component.js';
+
 export function getDocsHTML() {
   return `<!DOCTYPE html>
   <html lang="en">
@@ -6,31 +9,118 @@ export function getDocsHTML() {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>API Proxy Manager - Integration Guide</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    ${getSharedStyles()}
     <style>
-      * { margin: 0; padding: 0; box-sizing: border-box; }
-      body { font-family: system-ui, -apple-system, sans-serif; line-height: 1.6; color: #333; background: #fafafa; }
-      .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 3rem 0; text-align: center; }
-      .container { max-width: 1000px; margin: 0 auto; padding: 2rem; }
-      .card { background: white; border-radius: 12px; padding: 2rem; margin: 2rem 0; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
-      .code-block { background: #1e1e1e; color: #d4d4d4; padding: 1.5rem; border-radius: 8px; overflow-x: auto; font-family: 'JetBrains Mono', 'Fira Code', monospace; font-size: 14px; }
-      .api-config { background: #e8f5e8; border: 2px solid #27ae60; border-radius: 8px; padding: 1.5rem; margin: 1rem 0; }
-      .warning { background: #fff3cd; border: 2px solid #ffc107; border-radius: 8px; padding: 1.5rem; margin: 1rem 0; }
-      h1 { font-size: 2.5rem; margin-bottom: 0.5rem; }
-      h2 { color: #2c3e50; margin: 2rem 0 1rem 0; font-size: 1.8rem; }
-      h3 { color: #34495e; margin: 1.5rem 0 1rem 0; font-size: 1.3rem; }
-      .highlight { background: #fff3cd; padding: 0.2rem 0.5rem; border-radius: 4px; font-family: monospace; }
-      .step { background: #f8f9fa; border-left: 4px solid #007bff; padding: 1rem; margin: 1rem 0; }
-      table { width: 100%; border-collapse: collapse; margin: 1.5rem 0; }
-      th, td { padding: 1rem; text-align: left; border-bottom: 1px solid #ddd; }
-      th { background-color: #f8f9fa; font-weight: 600; color: #495057; }
-      .copy-btn { background: #007bff; color: white; border: none; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer; font-size: 12px; margin-left: 1rem; }
-      .copy-btn:hover { background: #0056b3; }
+      .docs-header {
+        background: linear-gradient(135deg, var(--primary-color), var(--primary-hover));
+        color: var(--text-white);
+        padding: var(--spacing-2xl) 0;
+        text-align: center;
+        margin-bottom: var(--spacing-xl);
+      }
+      
+      .docs-header h1 {
+        font-size: 2.5rem;
+        margin-bottom: var(--spacing-sm);
+        font-weight: 700;
+      }
+      
+      .docs-header p {
+        font-size: 1.125rem;
+        opacity: 0.9;
+      }
+      
+      .code-block {
+        background: var(--bg-dark);
+        color: #d4d4d4;
+        padding: var(--spacing-lg);
+        border-radius: var(--radius-md);
+        overflow-x: auto;
+        font-family: var(--font-mono);
+        font-size: 0.875rem;
+        margin: var(--spacing-md) 0;
+        border: 1px solid #374151;
+      }
+      
+      .api-config {
+        background: #f0f9ff;
+        border: 2px solid var(--primary-color);
+        border-radius: var(--radius-md);
+        padding: var(--spacing-lg);
+        margin: var(--spacing-md) 0;
+      }
+      
+      .warning {
+        background: #fffbeb;
+        border: 2px solid var(--warning-color);
+        border-radius: var(--radius-md);
+        padding: var(--spacing-lg);
+        margin: var(--spacing-md) 0;
+      }
+      
+      .highlight {
+        background: var(--primary-light);
+        color: var(--primary-color);
+        padding: var(--spacing-xs) var(--spacing-sm);
+        border-radius: var(--radius-sm);
+        font-family: var(--font-mono);
+        font-size: 0.875rem;
+        font-weight: 500;
+      }
+      
+      .step {
+        background: var(--bg-secondary);
+        border-left: 4px solid var(--primary-color);
+        padding: var(--spacing-lg);
+        margin: var(--spacing-md) 0;
+        border-radius: 0 var(--radius-md) var(--radius-md) 0;
+      }
+      
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: var(--spacing-lg) 0;
+        background: var(--bg-card);
+        border-radius: var(--radius-md);
+        overflow: hidden;
+        box-shadow: var(--shadow-sm);
+      }
+      
+      th, td {
+        padding: var(--spacing-lg);
+        text-align: left;
+        border-bottom: 1px solid #e2e8f0;
+      }
+      
+      th {
+        background: var(--bg-secondary);
+        font-weight: 600;
+        color: var(--text-primary);
+        font-size: 0.875rem;
+        text-transform: uppercase;
+        letter-spacing: 0.025em;
+      }
+      
+      td code {
+        background: var(--bg-secondary);
+        padding: var(--spacing-xs) var(--spacing-sm);
+        border-radius: var(--radius-sm);
+        font-family: var(--font-mono);
+        font-size: 0.75rem;
+      }
     </style>
   </head>
   <body>
-    <div class="header">
-      <h1>🔗 API Integration Guide</h1>
-      <p>Secure API proxy integration for your applications</p>
+    ${getHeaderComponent('docs', false)}
+    
+    <div class="docs-header">
+      <div class="container">
+        <h1>🔗 API Integration Guide</h1>
+        <p>Secure API proxy integration for your applications</p>
+      </div>
     </div>
 
     <div class="container">
@@ -343,6 +433,7 @@ curl -X POST "https://your-worker.workers.dev/proxy/YOUR_PROJECT_ID?target_url=h
         });
       });
     </script>
+    ${getHeaderScript()}
   </body>
   </html>`;
 }

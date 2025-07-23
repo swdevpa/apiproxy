@@ -64,7 +64,10 @@ export class ApiConfigsHandler {
       });
     } catch (error) {
       console.error('Error listing API configs:', error);
-      return new Response('Internal Server Error', { status: 500 });
+      return new Response(JSON.stringify({ error: error.message }), { 
+        status: 500,
+        headers: { 'Content-Type': 'application/json' }
+      });
     }
   }
 
@@ -72,7 +75,10 @@ export class ApiConfigsHandler {
     try {
       const config = await this.proxyManager.getCustomApiConfig(projectId, domain);
       if (!config) {
-        return new Response('API config not found', { status: 404 });
+        return new Response(JSON.stringify({ error: 'API config not found' }), { 
+          status: 404,
+          headers: { 'Content-Type': 'application/json' }
+        });
       }
       
       return new Response(JSON.stringify(config), {
@@ -80,7 +86,10 @@ export class ApiConfigsHandler {
       });
     } catch (error) {
       console.error('Error getting API config:', error);
-      return new Response('Internal Server Error', { status: 500 });
+      return new Response(JSON.stringify({ error: error.message }), { 
+        status: 500,
+        headers: { 'Content-Type': 'application/json' }
+      });
     }
   }
 
@@ -90,7 +99,10 @@ export class ApiConfigsHandler {
       
       // Validate configuration
       if (!this.validateApiConfig(config)) {
-        return new Response('Invalid API configuration', { status: 400 });
+        return new Response(JSON.stringify({ error: 'Invalid API configuration' }), { 
+          status: 400,
+          headers: { 'Content-Type': 'application/json' }
+        });
       }
 
       const success = await this.proxyManager.saveCustomApiConfig(projectId, domain, config);
@@ -104,11 +116,17 @@ export class ApiConfigsHandler {
           headers: { 'Content-Type': 'application/json' }
         });
       } else {
-        return new Response('Failed to save API configuration', { status: 500 });
+        return new Response(JSON.stringify({ error: 'Failed to save API configuration' }), { 
+          status: 500,
+          headers: { 'Content-Type': 'application/json' }
+        });
       }
     } catch (error) {
       console.error('Error saving API config:', error);
-      return new Response('Internal Server Error', { status: 500 });
+      return new Response(JSON.stringify({ error: error.message }), { 
+        status: 500,
+        headers: { 'Content-Type': 'application/json' }
+      });
     }
   }
 

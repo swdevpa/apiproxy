@@ -229,23 +229,31 @@ export class ProxyManager {
   // List all custom API configurations for a project
   async getProjectApiConfigs(projectId) {
     try {
+      console.log('Loading API configs for project:', projectId);
       const { keys } = await this.env.APIPROXY_PROJECTS_KV.list({ 
         prefix: `api_config:${projectId}:` 
       });
       
+      console.log('Found API config keys:', keys.length);
       const configs = {};
       for (const key of keys) {
-        const configData = await this.env.APIPROXY_PROJECTS_KV.get(key.name);
-        if (configData) {
-          const domain = key.name.split(':')[2];
-          configs[domain] = JSON.parse(configData);
+        try {
+          const configData = await this.env.APIPROXY_PROJECTS_KV.get(key.name);
+          if (configData) {
+            const domain = key.name.split(':')[2];
+            configs[domain] = JSON.parse(configData);
+            console.log('Loaded config for domain:', domain);
+          }
+        } catch (parseError) {
+          console.error('Error parsing config for key:', key.name, parseError);
         }
       }
       
+      console.log('Final configs:', configs);
       return configs;
     } catch (error) {
       console.error('Error loading project API configs:', error);
-      return {};
+      return {}; // Return empty object on error to prevent 500s
     }
   }
 
